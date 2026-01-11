@@ -1,4 +1,4 @@
-declare module "pg" {
-  import pg from "pg";
+declare module 'pg' {
+  import pg from 'pg';
   export = pg;
 }

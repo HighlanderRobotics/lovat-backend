@@ -1,8 +1,6 @@
-import redis from "./../../database/redis/client";
+import redis from './../../database/redis/client';
 
-export async function rateLimitApiKey(
-  keyHash: string
-): Promise<boolean> {
+export async function rateLimitApiKey(keyHash: string): Promise<boolean> {
   const redisKey = `auth:apikey:${keyHash}:rate`;
 
   const count = await redis.incr(redisKey);
