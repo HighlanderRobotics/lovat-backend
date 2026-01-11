@@ -33,7 +33,7 @@ export async function authenticateJwt(token: string) {
         id: userId,
         email: data.email,
         emailVerified: data.email_verified,
-        role: 'ANALYST',
+        role: 'MEMBER',
       })
       .returning()
       .then((r) => r[0]);

@@ -69,16 +69,3 @@ export const BargeResult = z
 export const WarningType = z.enum(['AUTO_LEAVE', 'BREAK']).openapi('WarningType');
 
 export const UserRole = z.enum(['MEMBER', 'ADMIN', 'OWNER']).openapi('UserRole');
-
-export type Position = z.infer<typeof Position>;
-export type EventAction = z.infer<typeof EventAction>;
-export type MatchType = z.infer<typeof MatchType>;
-export type RobotRole = z.infer<typeof RobotRole>;
-export type AlgaePickup = z.infer<typeof AlgaePickup>;
-export type KnocksAlgae = z.infer<typeof KnocksAlgae>;
-export type AutoLeave = z.infer<typeof AutoLeave>;
-export type UnderShallowCage = z.infer<typeof UnderShallowCage>;
-export type CoralPickup = z.infer<typeof CoralPickup>;
-export type BargeResult = z.infer<typeof BargeResult>;
-export type WarningType = z.infer<typeof WarningType>;
-export type UserRole = z.infer<typeof UserRole>;
