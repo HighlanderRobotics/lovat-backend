@@ -3,6 +3,14 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "NODE_ENV=development tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "bun dist/server.js",
+    "test": "tsc",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
   "devDependencies": {
     "@types/aws-lambda": "8.10.159",
     "@types/bun": "latest",
@@ -19,10 +27,11 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.2.0",
+    "axios": "^1.13.2",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.3",
+    "ioredis": "^5.9.1",
     "pg": "^8.16.3",
-    "redis": "^5.10.0",
     "sst": "3.17.25",
     "zod": "^4.3.5"
   }
