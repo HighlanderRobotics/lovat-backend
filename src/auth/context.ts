@@ -1,24 +1,21 @@
-import { authenticateApiKey } from './strategies/apiKey.strategy';
-import { authenticateJwt } from './strategies/jwt.strategy';
-import type { AuthenticatedRequestContext } from './types';
 import type { Next } from 'hono';
+import { requireSlackToken } from './strategies/slack.strategy';
+import { requireLovatSignature } from './strategies/lovat.strategy';
 
-export async function requireAuth(c: AuthenticatedRequestContext, next: Next) {
-  const header = c.req.header('authorization');
-  if (!header?.startsWith('Bearer ')) return c.text('Unauthorized', 401);
+export async function requireAuth(c: any, next: Next) {
+  // First try Slack token verification
+  let ok = false;
+  await requireSlackToken(c as any, async () => {
+    ok = true;
+  });
+  if (ok) return await next();
 
-  const token = header.slice(7);
+  // Then try Lovat signature verification
+  ok = false;
+  await requireLovatSignature(c as any, async () => {
+    ok = true;
+  });
+  if (ok) return await next();
 
-  const apiKeyResult = await authenticateApiKey(token);
-
-  if (apiKeyResult?.ok === false) return c.json({ message: 'API key rate limit exceeded' }, 429);
-
-  const result = apiKeyResult?.ok ? apiKeyResult : await authenticateJwt(token);
-
-  if (!result || !result.user) return c.text('Unauthorized', 401);
-
-  c.user = result.user;
-  c.tokenType = result.tokenType;
-
-  await next();
+  return c.text('Unauthorized', 401);
 }

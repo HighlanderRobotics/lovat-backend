@@ -8,10 +8,7 @@ export const users = pgTable('User', {
   email: varchar('email').notNull().unique(),
   emailVerified: boolean('emailVerified').notNull().default(false),
   username: varchar('username'),
-  role: userRole('role').notNull().default('ANALYST'),
-  // Deprecated fields kept for compatibility
-  tournamentSource: varchar('tournamentSource').array(),
-  teamSource: integer('teamSource').array(),
+  role: userRole('role').notNull().default('MEMBER'),
   tournamentSourceRule: jsonb('tournamentSourceRule')
     .notNull()
     .default(JSON.stringify({ mode: 'EXCLUDE', items: [] })),

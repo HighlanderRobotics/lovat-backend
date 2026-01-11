@@ -69,4 +69,4 @@ export const bargeResult = pgEnum('BargeResult', [
 
 export const warningType = pgEnum('WarningType', ['AUTO_LEAVE', 'BREAK']);
 
-export const userRole = pgEnum('UserRole', ['ANALYST', 'SCOUTING_LEAD']);
+export const userRole = pgEnum('UserRole', ['MEMBER', 'ADMIN', "OWNER'"]);

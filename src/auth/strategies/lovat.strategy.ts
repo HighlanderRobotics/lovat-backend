@@ -1,10 +1,9 @@
-import type { AuthenticatedRequestContext } from '../types';
-import type { Next } from 'hono';
+import type { Context, Next } from 'hono';
 import { createHmac } from 'crypto';
 
 const LOVAT_SIGNING_KEY = process.env.LOVAT_SIGNING_KEY;
 
-export async function requireLovatSignature(c: AuthenticatedRequestContext, next: Next) {
+export async function requireLovatSignature(c: Context, next: Next) {
   if (!LOVAT_SIGNING_KEY) {
     console.error('LOVAT_SIGNING_KEY is not set');
     return c.text('Server misconfiguration', 500);
@@ -20,7 +19,6 @@ export async function requireLovatSignature(c: AuthenticatedRequestContext, next
     return c.text('Unauthorized', 401);
   }
 
-  // Check if timestamp is within 5 minutes
   const timestampDate = new Date(timestamp * 1000);
   const now = new Date();
   const diffMinutes = Math.floor((now.getTime() - timestampDate.getTime()) / 1000 / 60);
