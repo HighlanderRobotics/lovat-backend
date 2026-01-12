@@ -1,7 +1,6 @@
 import { logger } from '../middleware/logger';
 import userRouter from './users.routes';
 import { api } from '../openapi/registry';
-import { open } from 'node:fs';
 import openapiDocHandler from '../openapi/doc';
 
 // Use OpenAPIHono as the central router
