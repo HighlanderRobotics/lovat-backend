@@ -1,11 +1,22 @@
-import { Redis } from 'ioredis';
+import Redis from 'ioredis';
 
-const redis = new Redis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null,
-  enableOfflineQueue: true, // queue commands if Redis is down temporarily
-});
+let redis: Redis;
+
+if (!process.env.REDIS_HOST || !process.env.REDIS_PORT) {
+  redis = new Redis({
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: true,
+  });
+} else {
+  redis = new Redis({
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT),
+    tls: process.env.REDIS_TLS ? {} : undefined, // optional
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: true,
+  });
+}
 
 redis.on('connect', () => console.log('Redis connected'));
-redis.on('error', (err) => console.error('Redis error', err));
 
 export default redis;
