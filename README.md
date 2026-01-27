@@ -1,5 +1,5 @@
-# lovat-backend
-
+# [WIP] lovat-backend
+lovat server v2 (in development)
 To install dependencies:
 
 ```bash
