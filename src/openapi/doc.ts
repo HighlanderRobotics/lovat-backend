@@ -9,6 +9,7 @@ const openapiDocHandler = (c: Context) => {
   <title>Lovat API Docs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <link rel="stylesheet" href="/v2/swaggerTheme.css" />
   <style>html,body,#swagger{height:100%;margin:0}</style>
 </head>
 <body>

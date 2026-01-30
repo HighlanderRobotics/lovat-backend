@@ -38,4 +38,15 @@ router.get('/openapi.json', (c) => c.json(router.getOpenAPIDocument(openapiConfi
 // Swagger UI HTML at /doc (loads /v2/openapi.json)
 router.get('/doc', openapiDocHandler);
 
+// Serve Swagger theme CSS
+router.get('/swaggerTheme.css', async (c) => {
+  try {
+    const cssPath = new URL('../public/swaggerTheme.css', import.meta.url);
+    const css = await Bun.file(cssPath).text();
+    return new Response(css, { headers: { 'Content-Type': 'text/css' } });
+  } catch (e) {
+    return c.text('/* failed to load swaggerTheme.css */', 500);
+  }
+});
+
 export default router;
