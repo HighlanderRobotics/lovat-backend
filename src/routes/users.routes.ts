@@ -1,9 +1,12 @@
-import { auth } from '../auth/builder';
+import { combine, blockApiKeys, blockNonScoutingLeads } from '../auth/builder';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import deleteUserById, { DeleteUserParamsSchema } from '../handler/users/deleteUser';
 import { ErrorResponseSchema } from '../openapi/schemas/common';
 
 const user = new OpenAPIHono();
+
+// Apply auth middlewares for all routes in this router
+user.use(combine(blockApiKeys(), blockNonScoutingLeads()));
 
 user.openapi(
   {
@@ -25,8 +28,8 @@ user.openapi(
         },
       },
     },
+    security: [{ DashboardAuth: [] }],
   },
-  auth.check().noApiKey().scoutingLead(),
   deleteUserById
 );
 
