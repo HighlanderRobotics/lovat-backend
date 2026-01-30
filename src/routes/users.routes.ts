@@ -2,6 +2,7 @@ import { combine, blockApiKeys, blockNonScoutingLeads } from '../auth/builder';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import deleteUserById, { DeleteUserParamsSchema } from '../handler/users/deleteUser';
 import { ErrorResponseSchema } from '../openapi/schemas/common';
+import { UnauthorizedResponse, ForbiddenResponse, NotFoundResponse } from '../openapi/responses';
 
 const user = new OpenAPIHono();
 
@@ -19,16 +20,10 @@ user.openapi(
       204: {
         description: 'User deleted successfully',
       },
-      404: {
-        description: 'User not found',
-        content: {
-          'application/json': {
-            schema: ErrorResponseSchema,
-          },
-        },
-      },
+      401: UnauthorizedResponse,
+      403: ForbiddenResponse,
+      404: NotFoundResponse,
     },
-    security: [{ DashboardAuth: [] }],
   },
   deleteUserById
 );
