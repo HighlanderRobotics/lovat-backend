@@ -3,12 +3,13 @@ import { authenticateJwt } from './strategies/jwt.strategy';
 import { authenticateApiKey } from './strategies/apiKey.strategy';
 import { requireLovatSignature } from './strategies/lovat.strategy';
 import { requireSlackToken } from './strategies/slack.strategy';
+import { Forbidden, Unauthorized } from '../middleware/error';
 
 // Unified auth middlewares
 export function dashboardAuth(): MiddlewareHandler {
   return async (c, next: Next) => {
     const header = c.req.header('authorization');
-    if (!header?.startsWith('Bearer ')) return c.text('Unauthorized', 401);
+    if (!header?.startsWith('Bearer ')) throw new Unauthorized();
     const token = header.slice(7);
 
     // Try API key first
@@ -21,7 +22,7 @@ export function dashboardAuth(): MiddlewareHandler {
         return;
       }
       // Invalid API key
-      return c.text('Unauthorized', 401);
+      throw new Unauthorized('Invalid API key');
     }
 
     // Fallback to JWT
@@ -33,7 +34,7 @@ export function dashboardAuth(): MiddlewareHandler {
       return;
     }
 
-    return c.text('Unauthorized', 401);
+    throw new Unauthorized();
   };
 }
 
@@ -49,10 +50,10 @@ export function lovatAuth(): MiddlewareHandler {
 export function blockApiKeys(): MiddlewareHandler {
   return async (c, next: Next) => {
     const header = c.req.header('authorization');
-    if (!header?.startsWith('Bearer ')) return c.text('Unauthorized', 401);
+    if (!header?.startsWith('Bearer ')) throw new Unauthorized();
     const token = header.slice(7);
     if (token.startsWith('lvt-')) {
-      return c.text('Unauthorized: API key not allowed', 401);
+      throw new Forbidden('API key not allowed');
     }
     const result = await authenticateJwt(token);
     if (result && result.user) {
@@ -61,7 +62,7 @@ export function blockApiKeys(): MiddlewareHandler {
       await next();
       return;
     }
-    return c.text('Unauthorized', 401);
+    throw new Unauthorized();
   };
 }
 
@@ -72,7 +73,7 @@ export function blockNonScoutingLeads(): MiddlewareHandler {
       await next();
       return;
     }
-    return c.text('Unauthorized', 401);
+    throw new Forbidden('Requires SCOUTING_LEAD role');
   };
 }
 

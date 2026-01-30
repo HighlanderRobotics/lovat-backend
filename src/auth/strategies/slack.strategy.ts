@@ -1,4 +1,5 @@
 import type { Context, Next } from 'hono';
+import { Forbidden, Unauthorized, InternalServerError } from '../../middleware/error';
 
 export async function requireSlackToken(c: Context, next: Next) {
   try {
@@ -14,25 +15,26 @@ export async function requireSlackToken(c: Context, next: Next) {
     }
 
     if (!signature || isNaN(timestamp)) {
-      return c.text('Unauthorized', 401);
+      throw new Unauthorized('Missing signature or timestamp');
     }
 
     const now = Math.floor(Date.now() / 1000);
     if (Math.abs(now - timestamp) > 60 * 5) {
-      return c.text('Stale request', 401);
+      throw new Unauthorized('Stale request');
     }
 
     if (body.api_app_id !== process.env.SLACK_APP_ID) {
-      return c.text('Unauthorized', 401);
+      throw new Unauthorized('Invalid Slack App ID');
     }
 
     if (verificationKey !== process.env.SLACK_VERIFICATION_KEY) {
-      return c.text('Unauthorized', 401);
+      throw new Unauthorized('Invalid verification token');
     }
 
     await next();
   } catch (error) {
     console.error('Slack verification error:', error);
-    return c.text('Internal server error verifying Slack request', 500);
+    if (error instanceof Unauthorized || error instanceof Forbidden) throw error;
+    throw new InternalServerError('Error verifying Slack request');
   }
 }

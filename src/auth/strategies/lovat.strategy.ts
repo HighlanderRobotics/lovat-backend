@@ -1,12 +1,13 @@
 import type { Context, Next } from 'hono';
 import { createHmac } from 'crypto';
+import { InternalServerError, Unauthorized } from '../../middleware/error';
 
 const LOVAT_SIGNING_KEY = process.env.LOVAT_SIGNING_KEY;
 
 export async function requireLovatSignature(c: Context, next: Next) {
   if (!LOVAT_SIGNING_KEY) {
     console.error('LOVAT_SIGNING_KEY is not set');
-    return c.text('Server misconfiguration', 500);
+    throw new InternalServerError('Server misconfiguration');
   }
   const signature = c.req.header('x-signature');
   const timestampStr = c.req.header('x-timestamp');
@@ -16,13 +17,13 @@ export async function requireLovatSignature(c: Context, next: Next) {
   const body = JSON.stringify(await c.req.json().catch(() => {})) || '';
 
   if (!signature || isNaN(timestamp)) {
-    return c.text('Unauthorized', 401);
+    throw new Unauthorized('Missing or invalid signature/timestamp');
   }
 
   const timestampDate = new Date(timestamp * 1000);
   const now = new Date();
   const diffMinutes = Math.floor((now.getTime() - timestampDate.getTime()) / 1000 / 60);
-  if (diffMinutes > 5) return c.text('Unauthorized', 401);
+  if (diffMinutes > 5) throw new Unauthorized('Request timestamp is too old');
 
   const generatedSignature = createHmac('sha256', LOVAT_SIGNING_KEY)
     .update(JSON.stringify({ path, method, body, timestamp }))
@@ -31,6 +32,6 @@ export async function requireLovatSignature(c: Context, next: Next) {
   if (signature === generatedSignature) {
     await next();
   } else {
-    return c.text('Unauthorized', 401);
+    throw new Unauthorized('Invalid signature');
   }
 }

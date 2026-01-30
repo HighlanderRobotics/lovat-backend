@@ -2,7 +2,7 @@ import { logger } from '../middleware/logger';
 import userRouter from './users.routes';
 import { api } from '../openapi/registry';
 import openapiDocHandler from '../openapi/doc';
-import { handleErrors } from '../middleware/error';
+import { handleErrors, InternalServerError } from '../middleware/error';
 import { version } from 'bun';
 import { securitySchemes } from '../openapi/security';
 import { errorExamplesComponents } from '../openapi/examples';
@@ -45,7 +45,7 @@ router.get('/swaggerTheme.css', async (c) => {
     const css = await Bun.file(cssPath).text();
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   } catch (e) {
-    return c.text('/* failed to load swaggerTheme.css */', 500);
+    throw new InternalServerError('Failed to load swaggerTheme.css');
   }
 });
 
