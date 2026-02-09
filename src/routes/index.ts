@@ -1,5 +1,6 @@
 import { logger } from '../middleware/logger';
 import userRouter from './users.routes';
+import systemsRouter from './systems/index.js';
 import { api } from '../openapi/registry';
 import openapiDocHandler from '../openapi/doc';
 import { handleErrors, InternalServerError } from '../middleware/error';
@@ -17,6 +18,8 @@ router.get('/health', (c) => c.json({ ok: true }));
 
 // Mount user routes
 router.route('/user', userRouter);
+// Mount systems routes
+router.route('/systems', systemsRouter);
 
 // Serve OpenAPI docs centrally
 const openapiConfig = {
