@@ -2,15 +2,17 @@ import { logger } from '../middleware/logger';
 import userRouter from './users.routes';
 import { api } from '../openapi/registry';
 import openapiDocHandler from '../openapi/doc';
-import { handleErrors, InternalServerError } from '../middleware/error';
+import { handleErrors } from '../middleware/error';
 import { version } from 'bun';
 import { securitySchemes } from '../openapi/security';
 import { errorExamplesComponents } from '../openapi/examples';
+import { etag } from '../middleware/etag';
 
 // Use OpenAPIHono as the central router
 const router = api;
+router.onError(handleErrors);
 router.use('/*', logger);
-router.use('/*', handleErrors);
+router.use('/*', etag);
 
 // Health endpoint
 router.get('/health', (c) => c.json({ ok: true }));
@@ -38,15 +40,18 @@ router.get('/openapi.json', (c) => c.json(router.getOpenAPIDocument(openapiConfi
 // Swagger UI HTML at /doc (loads /v2/openapi.json)
 router.get('/doc', openapiDocHandler);
 
-// Serve Swagger theme CSS
-router.get('/swaggerTheme.css', async (c) => {
-  try {
-    const cssPath = new URL('../public/swaggerTheme.css', import.meta.url);
-    const css = await Bun.file(cssPath).text();
-    return new Response(css, { headers: { 'Content-Type': 'text/css' } });
-  } catch (e) {
-    throw new InternalServerError('Failed to load swaggerTheme.css');
-  }
+router.get('/debug', (c) => {
+  return c.json(
+    router.routes.map((r) => ({
+      path: r.path,
+      method: r.method,
+    }))
+  );
+});
+
+router.notFound((c) => {
+  console.log('NOT FOUND:', c.req.method, c.req.path);
+  return c.json({ error: 'not found' }, 404);
 });
 
 export default router;

@@ -66,14 +66,14 @@ export function blockApiKeys(): MiddlewareHandler {
   };
 }
 
-export function blockNonScoutingLeads(): MiddlewareHandler {
+export function blockNonAdmins(): MiddlewareHandler {
   return async (c, next: Next) => {
     const user = c.get('user');
-    if (user?.role === 'SCOUTING_LEAD') {
+    if (user?.role === 'ADMIN') {
       await next();
       return;
     }
-    throw new Forbidden('Requires SCOUTING_LEAD role');
+    throw new Forbidden('Requires ADMIN role');
   };
 }
 

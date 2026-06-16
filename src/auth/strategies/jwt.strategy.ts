@@ -38,6 +38,5 @@ export async function authenticateJwt(token: string) {
       .returning()
       .then((r) => r[0]);
   }
-
   return { user, tokenType: 'jwt' as const };
 }

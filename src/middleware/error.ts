@@ -71,31 +71,28 @@ export class InternalServerError extends HttpError {
   }
 }
 
-export const handleErrors = async (ctx: any, next: any) => {
-  try {
-    await next();
-  } catch (err) {
-    if (err instanceof HttpError) {
-      return ctx.json(
-        {
-          error: {
-            message: err.message,
-            code: err.code,
-          },
-        },
-        err.status
-      );
-    }
-
-    console.error('UNHANDLED ERROR:', err);
+export const handleErrors = async (err: any, ctx: any) => {
+  console.log('HANDLE_ERRORS CAUGHT', err);
+  if (err instanceof HttpError) {
     return ctx.json(
       {
         error: {
-          message: 'Internal Server Error',
-          code: 'INTERNAL_SERVER_ERROR',
+          message: err.message,
+          code: err.code,
         },
       },
-      500
+      err.status
     );
   }
+
+  console.error('UNHANDLED ERROR:', err);
+  return ctx.json(
+    {
+      error: {
+        message: 'Internal Server Error',
+        code: 'INTERNAL_SERVER_ERROR',
+      },
+    },
+    500
+  );
 };

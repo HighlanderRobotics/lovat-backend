@@ -1,0 +1,852 @@
+{
+  "id": "3f1459f0-6c26-4190-bc6c-f77b383f686d",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.ApiKey": {
+      "name": "ApiKey",
+      "schema": "",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "keyHash": {
+          "name": "keyHash",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "lastUsed": {
+          "name": "lastUsed",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requests": {
+          "name": "requests",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ApiKey_keyHash_unique": {
+          "name": "ApiKey_keyHash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "keyHash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.User": {
+      "name": "User",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "teamNumber": {
+          "name": "teamNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emailVerified": {
+          "name": "emailVerified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "UserRole",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MEMBER'"
+        },
+        "tournamentSourceRule": {
+          "name": "tournamentSourceRule",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"mode\":\"EXCLUDE\",\"items\":[]}'"
+        },
+        "teamSourceRule": {
+          "name": "teamSourceRule",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"mode\":\"EXCLUDE\",\"items\":[]}'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "User_email_unique": {
+          "name": "User_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.RegisteredTeam": {
+      "name": "RegisteredTeam",
+      "schema": "",
+      "columns": {
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emailVerified": {
+          "name": "emailVerified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "teamApproved": {
+          "name": "teamApproved",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "website": {
+          "name": "website",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "RegisteredTeam_number_Team_number_fk": {
+          "name": "RegisteredTeam_number_Team_number_fk",
+          "tableFrom": "RegisteredTeam",
+          "tableTo": "Team",
+          "columnsFrom": [
+            "number"
+          ],
+          "columnsTo": [
+            "number"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "RegisteredTeam_code_unique": {
+          "name": "RegisteredTeam_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Team": {
+      "name": "Team",
+      "schema": "",
+      "columns": {
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.TeamMatchData": {
+      "name": "TeamMatchData",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tournamentKey": {
+          "name": "tournamentKey",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "matchNumber": {
+          "name": "matchNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamNumber": {
+          "name": "teamNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "matchType": {
+          "name": "matchType",
+          "type": "MatchType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Tournament": {
+      "name": "Tournament",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date": {
+          "name": "date",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Event": {
+      "name": "Event",
+      "schema": "",
+      "columns": {
+        "eventUuid": {
+          "name": "eventUuid",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "time": {
+          "name": "time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "EventAction",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "Position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "points": {
+          "name": "points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scoutReportUuid": {
+          "name": "scoutReportUuid",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ScoutReport": {
+      "name": "ScoutReport",
+      "schema": "",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "teamMatchKey": {
+          "name": "teamMatchKey",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "startTime": {
+          "name": "startTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "robotRole": {
+          "name": "robotRole",
+          "type": "RobotRole",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "algaePickup": {
+          "name": "algaePickup",
+          "type": "AlgaePickup",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "coralPickup": {
+          "name": "coralPickup",
+          "type": "CoralPickup",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bargeResult": {
+          "name": "bargeResult",
+          "type": "BargeResult",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "knocksAlgae": {
+          "name": "knocksAlgae",
+          "type": "KnocksAlgae",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "underShallowCage": {
+          "name": "underShallowCage",
+          "type": "UnderShallowCage",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "robotBrokeDescription": {
+          "name": "robotBrokeDescription",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "driverAbility": {
+          "name": "driverAbility",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scouterUuid": {
+          "name": "scouterUuid",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ScouterScheduleShift": {
+      "name": "ScouterScheduleShift",
+      "schema": "",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "sourceTeamNumber": {
+          "name": "sourceTeamNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tournamentKey": {
+          "name": "tournamentKey",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "startMatchOrdinalNumber": {
+          "name": "startMatchOrdinalNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endMatchOrdinalNumber": {
+          "name": "endMatchOrdinalNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Scouter": {
+      "name": "Scouter",
+      "schema": "",
+      "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived": {
+          "name": "archived",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "sourceTeamNumber": {
+          "name": "sourceTeamNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strikes": {
+          "name": "strikes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "scouterReliability": {
+          "name": "scouterReliability",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SlackNotificationThread": {
+      "name": "SlackNotificationThread",
+      "schema": "",
+      "columns": {
+        "messageId": {
+          "name": "messageId",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "matchNumber": {
+          "name": "matchNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamNumber": {
+          "name": "teamNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subscriptionId": {
+          "name": "subscriptionId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channelId": {
+          "name": "channelId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SlackSubscription": {
+      "name": "SlackSubscription",
+      "schema": "",
+      "columns": {
+        "subscriptionId": {
+          "name": "subscriptionId",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "channelId": {
+          "name": "channelId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspaceId": {
+          "name": "workspaceId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subscribedEvent": {
+          "name": "subscribedEvent",
+          "type": "WarningType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SlackWorkspace": {
+      "name": "SlackWorkspace",
+      "schema": "",
+      "columns": {
+        "workspaceId": {
+          "name": "workspaceId",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner": {
+          "name": "owner",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authToken": {
+          "name": "authToken",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "botUserId": {
+          "name": "botUserId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authUserId": {
+          "name": "authUserId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.AlgaePickup": {
+      "name": "AlgaePickup",
+      "schema": "public",
+      "values": [
+        "NONE",
+        "GROUND",
+        "REEF",
+        "BOTH"
+      ]
+    },
+    "public.AutoLeave": {
+      "name": "AutoLeave",
+      "schema": "public",
+      "values": [
+        "NO",
+        "YES"
+      ]
+    },
+    "public.BargeResult": {
+      "name": "BargeResult",
+      "schema": "public",
+      "values": [
+        "NOT_ATTEMPTED",
+        "PARKED",
+        "SHALLOW",
+        "FAILED_SHALLOW",
+        "DEEP",
+        "FAILED_DEEP"
+      ]
+    },
+    "public.CoralPickup": {
+      "name": "CoralPickup",
+      "schema": "public",
+      "values": [
+        "NONE",
+        "GROUND",
+        "STATION",
+        "BOTH"
+      ]
+    },
+    "public.EventAction": {
+      "name": "EventAction",
+      "schema": "public",
+      "values": [
+        "PICKUP_CORAL",
+        "PICKUP_ALGAE",
+        "FEED",
+        "AUTO_LEAVE",
+        "DEFEND",
+        "SCORE_NET",
+        "FAIL_NET",
+        "SCORE_PROCESSOR",
+        "SCORE_CORAL",
+        "DROP_ALGAE",
+        "DROP_CORAL",
+        "START_POSITION"
+      ]
+    },
+    "public.KnocksAlgae": {
+      "name": "KnocksAlgae",
+      "schema": "public",
+      "values": [
+        "NO",
+        "YES"
+      ]
+    },
+    "public.MatchType": {
+      "name": "MatchType",
+      "schema": "public",
+      "values": [
+        "QUALIFICATION",
+        "ELIMINATION"
+      ]
+    },
+    "public.Position": {
+      "name": "Position",
+      "schema": "public",
+      "values": [
+        "NONE",
+        "START_ONE",
+        "START_TWO",
+        "START_THREE",
+        "START_FOUR",
+        "LEVEL_ONE",
+        "LEVEL_TWO",
+        "LEVEL_THREE",
+        "LEVEL_FOUR",
+        "LEVEL_ONE_A",
+        "LEVEL_ONE_B",
+        "LEVEL_ONE_C",
+        "LEVEL_TWO_A",
+        "LEVEL_TWO_B",
+        "LEVEL_TWO_C",
+        "LEVEL_THREE_A",
+        "LEVEL_THREE_B",
+        "LEVEL_THREE_C",
+        "LEVEL_FOUR_A",
+        "LEVEL_FOUR_B",
+        "LEVEL_FOUR_C",
+        "GROUND_PIECE_A",
+        "GROUND_PIECE_B",
+        "GROUND_PIECE_C",
+        "CORAL_STATION_ONE",
+        "CORAL_STATION_TWO"
+      ]
+    },
+    "public.RobotRole": {
+      "name": "RobotRole",
+      "schema": "public",
+      "values": [
+        "OFFENSE",
+        "DEFENSE",
+        "FEEDER",
+        "IMMOBILE"
+      ]
+    },
+    "public.UnderShallowCage": {
+      "name": "UnderShallowCage",
+      "schema": "public",
+      "values": [
+        "NO",
+        "YES"
+      ]
+    },
+    "public.UserRole": {
+      "name": "UserRole",
+      "schema": "public",
+      "values": [
+        "MEMBER",
+        "ADMIN",
+        "OWNER"
+      ]
+    },
+    "public.WarningType": {
+      "name": "WarningType",
+      "schema": "public",
+      "values": [
+        "AUTO_LEAVE",
+        "BREAK"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
