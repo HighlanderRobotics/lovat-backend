@@ -1,5 +1,4 @@
-
-const Analysis = {
-    analyze: calculate()
-}
-export Analysis;
+// const Analysis = {
+//     analyze: calculate()
+// }
+// //export Analysis;

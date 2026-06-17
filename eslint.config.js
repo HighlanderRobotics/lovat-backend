@@ -6,7 +6,7 @@ import eslintPluginJs from '@eslint/js';
 export default [
   // Ignore patterns replacing legacy .eslintignore
   {
-    ignores: ['dist', 'node_modules', '.sst', 'sst.config.ts'],
+    ignores: ['dist', 'node_modules', '.sst', 'sst.config.ts', 'drizzle'],
   },
   // Base JS recommended rules
   eslintPluginJs.configs.recommended,

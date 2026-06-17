@@ -60,9 +60,7 @@
         "ApiKey_keyHash_unique": {
           "name": "ApiKey_keyHash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "keyHash"
-          ]
+          "columns": ["keyHash"]
         }
       },
       "policies": {},
@@ -134,9 +132,7 @@
         "User_email_unique": {
           "name": "User_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -192,12 +188,8 @@
           "name": "RegisteredTeam_number_Team_number_fk",
           "tableFrom": "RegisteredTeam",
           "tableTo": "Team",
-          "columnsFrom": [
-            "number"
-          ],
-          "columnsTo": [
-            "number"
-          ],
+          "columnsFrom": ["number"],
+          "columnsTo": ["number"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -207,9 +199,7 @@
         "RegisteredTeam_code_unique": {
           "name": "RegisteredTeam_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},
@@ -700,42 +690,22 @@
     "public.AlgaePickup": {
       "name": "AlgaePickup",
       "schema": "public",
-      "values": [
-        "NONE",
-        "GROUND",
-        "REEF",
-        "BOTH"
-      ]
+      "values": ["NONE", "GROUND", "REEF", "BOTH"]
     },
     "public.AutoLeave": {
       "name": "AutoLeave",
       "schema": "public",
-      "values": [
-        "NO",
-        "YES"
-      ]
+      "values": ["NO", "YES"]
     },
     "public.BargeResult": {
       "name": "BargeResult",
       "schema": "public",
-      "values": [
-        "NOT_ATTEMPTED",
-        "PARKED",
-        "SHALLOW",
-        "FAILED_SHALLOW",
-        "DEEP",
-        "FAILED_DEEP"
-      ]
+      "values": ["NOT_ATTEMPTED", "PARKED", "SHALLOW", "FAILED_SHALLOW", "DEEP", "FAILED_DEEP"]
     },
     "public.CoralPickup": {
       "name": "CoralPickup",
       "schema": "public",
-      "values": [
-        "NONE",
-        "GROUND",
-        "STATION",
-        "BOTH"
-      ]
+      "values": ["NONE", "GROUND", "STATION", "BOTH"]
     },
     "public.EventAction": {
       "name": "EventAction",
@@ -758,18 +728,12 @@
     "public.KnocksAlgae": {
       "name": "KnocksAlgae",
       "schema": "public",
-      "values": [
-        "NO",
-        "YES"
-      ]
+      "values": ["NO", "YES"]
     },
     "public.MatchType": {
       "name": "MatchType",
       "schema": "public",
-      "values": [
-        "QUALIFICATION",
-        "ELIMINATION"
-      ]
+      "values": ["QUALIFICATION", "ELIMINATION"]
     },
     "public.Position": {
       "name": "Position",
@@ -806,37 +770,22 @@
     "public.RobotRole": {
       "name": "RobotRole",
       "schema": "public",
-      "values": [
-        "OFFENSE",
-        "DEFENSE",
-        "FEEDER",
-        "IMMOBILE"
-      ]
+      "values": ["OFFENSE", "DEFENSE", "FEEDER", "IMMOBILE"]
     },
     "public.UnderShallowCage": {
       "name": "UnderShallowCage",
       "schema": "public",
-      "values": [
-        "NO",
-        "YES"
-      ]
+      "values": ["NO", "YES"]
     },
     "public.UserRole": {
       "name": "UserRole",
       "schema": "public",
-      "values": [
-        "MEMBER",
-        "ADMIN",
-        "OWNER"
-      ]
+      "values": ["MEMBER", "ADMIN", "OWNER"]
     },
     "public.WarningType": {
       "name": "WarningType",
       "schema": "public",
-      "values": [
-        "AUTO_LEAVE",
-        "BREAK"
-      ]
+      "values": ["AUTO_LEAVE", "BREAK"]
     }
   },
   "schemas": {},
