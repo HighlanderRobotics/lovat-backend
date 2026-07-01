@@ -2,69 +2,64 @@ import { z } from '@hono/zod-openapi';
 
 export const Position = z
   .enum([
+    'LEFT_TRENCH',
+    'LEFT_BUMP',
+    'HUB',
+    'RIGHT_TRENCH',
+    'RIGHT_BUMP',
+    'NEUTRAL_ZONE',
+    'DEPOT',
+    'OUTPOST',
     'NONE',
-    'START_ONE',
-    'START_TWO',
-    'START_THREE',
-    'START_FOUR',
-    'LEVEL_ONE',
-    'LEVEL_TWO',
-    'LEVEL_THREE',
-    'LEVEL_FOUR',
-    'LEVEL_ONE_A',
-    'LEVEL_ONE_B',
-    'LEVEL_ONE_C',
-    'LEVEL_TWO_A',
-    'LEVEL_TWO_B',
-    'LEVEL_TWO_C',
-    'LEVEL_THREE_A',
-    'LEVEL_THREE_B',
-    'LEVEL_THREE_C',
-    'LEVEL_FOUR_A',
-    'LEVEL_FOUR_B',
-    'LEVEL_FOUR_C',
-    'GROUND_PIECE_A',
-    'GROUND_PIECE_B',
-    'GROUND_PIECE_C',
-    'CORAL_STATION_ONE',
-    'CORAL_STATION_TWO',
   ])
   .openapi('Position');
 
 export const EventAction = z
   .enum([
-    'PICKUP_CORAL',
-    'PICKUP_ALGAE',
-    'FEED',
-    'AUTO_LEAVE',
-    'DEFEND',
-    'SCORE_NET',
-    'FAIL_NET',
-    'SCORE_PROCESSOR',
-    'SCORE_CORAL',
-    'DROP_ALGAE',
-    'DROP_CORAL',
-    'START_POSITION',
+    'START_SCORING',
+    'STOP_SCORING',
+    'START_MATCH',
+    'START_CAMPING',
+    'STOP_CAMPING',
+    'START_DEFENDING',
+    'STOP_DEFENDING',
+    'INTAKE',
+    'OUTTAKE',
+    'DISRUPT',
+    'CROSS',
+    'CLIMB',
+    'START_FEEDING',
+    'STOP_FEEDING',
   ])
   .openapi('EventAction');
 
 export const MatchType = z.enum(['QUALIFICATION', 'ELIMINATION']).openapi('MatchType');
 
-export const RobotRole = z.enum(['OFFENSE', 'DEFENSE', 'FEEDER', 'IMMOBILE']).openapi('RobotRole');
+export const RobotRole = z
+  .enum(['CYCLING', 'SCORING', 'FEEDING', 'DEFENDING', 'IMMOBILE'])
+  .openapi('RobotRole');
 
-export const AlgaePickup = z.enum(['NONE', 'GROUND', 'REEF', 'BOTH']).openapi('AlgaePickup');
+export const AutoClimb = z
+  .enum(['NOT_ATTEMPTED', 'FAILED', 'SUCCEEDED'])
+  .openapi('AutoClimb');
 
-export const KnocksAlgae = z.enum(['NO', 'YES']).openapi('KnocksAlgae');
+export const Beached = z.enum(['ON_FUEL', 'ON_BUMP', 'BOTH', 'NEITHER']).openapi('Beached');
 
-export const AutoLeave = z.enum(['NO', 'YES']).openapi('AutoLeave');
+export const ClimbPosition = z.enum(['SIDE', 'MIDDLE']).openapi('ClimbPosition');
 
-export const UnderShallowCage = z.enum(['NO', 'YES']).openapi('UnderShallowCage');
+export const ClimbSide = z.enum(['FRONT', 'BACK']).openapi('ClimbSide');
 
-export const CoralPickup = z.enum(['NONE', 'GROUND', 'STATION', 'BOTH']).openapi('CoralPickup');
+export const EndgameClimb = z
+  .enum(['NOT_ATTEMPTED', 'FAILED', 'L1', 'L2', 'L3'])
+  .openapi('EndgameClimb');
 
-export const BargeResult = z
-  .enum(['NOT_ATTEMPTED', 'PARKED', 'SHALLOW', 'FAILED_SHALLOW', 'DEEP', 'FAILED_DEEP'])
-  .openapi('BargeResult');
+export const FeederType = z
+  .enum(['CONTINUOUS', 'STOP_TO_SHOOT', 'DUMP'])
+  .openapi('FeederType');
+
+export const FieldTraversal = z.enum(['TRENCH', 'BUMP', 'BOTH', 'NONE']).openapi('FieldTraversal');
+
+export const IntakeType = z.enum(['GROUND', 'OUTPOST', 'BOTH', 'NEITHER']).openapi('IntakeType');
 
 export const WarningType = z.enum(['AUTO_LEAVE', 'BREAK']).openapi('WarningType');
 

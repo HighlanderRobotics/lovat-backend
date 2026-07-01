@@ -1,70 +1,87 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
 export const position = pgEnum('Position', [
+  'LEFT_TRENCH',
+  'LEFT_BUMP',
+  'HUB',
+  'RIGHT_TRENCH',
+  'RIGHT_BUMP',
+  'NEUTRAL_ZONE',
+  'DEPOT',
+  'OUTPOST',
   'NONE',
-  'START_ONE',
-  'START_TWO',
-  'START_THREE',
-  'START_FOUR',
-  'LEVEL_ONE',
-  'LEVEL_TWO',
-  'LEVEL_THREE',
-  'LEVEL_FOUR',
-  'LEVEL_ONE_A',
-  'LEVEL_ONE_B',
-  'LEVEL_ONE_C',
-  'LEVEL_TWO_A',
-  'LEVEL_TWO_B',
-  'LEVEL_TWO_C',
-  'LEVEL_THREE_A',
-  'LEVEL_THREE_B',
-  'LEVEL_THREE_C',
-  'LEVEL_FOUR_A',
-  'LEVEL_FOUR_B',
-  'LEVEL_FOUR_C',
-  'GROUND_PIECE_A',
-  'GROUND_PIECE_B',
-  'GROUND_PIECE_C',
-  'CORAL_STATION_ONE',
-  'CORAL_STATION_TWO',
 ]);
 
 export const eventAction = pgEnum('EventAction', [
-  'PICKUP_CORAL',
-  'PICKUP_ALGAE',
-  'FEED',
-  'AUTO_LEAVE',
-  'DEFEND',
-  'SCORE_NET',
-  'FAIL_NET',
-  'SCORE_PROCESSOR',
-  'SCORE_CORAL',
-  'DROP_ALGAE',
-  'DROP_CORAL',
-  'START_POSITION',
+  'START_SCORING',
+  'STOP_SCORING',
+  'START_MATCH',
+  'START_CAMPING',
+  'STOP_CAMPING',
+  'START_DEFENDING',
+  'STOP_DEFENDING',
+  'INTAKE',
+  'OUTTAKE',
+  'DISRUPT',
+  'CROSS',
+  'CLIMB',
+  'START_FEEDING',
+  'STOP_FEEDING',
 ]);
 
 export const matchType = pgEnum('MatchType', ['QUALIFICATION', 'ELIMINATION']);
 
-export const robotRole = pgEnum('RobotRole', ['OFFENSE', 'DEFENSE', 'FEEDER', 'IMMOBILE']);
+export const robotRole = pgEnum('RobotRole', [
+  'CYCLING',
+  'SCORING',
+  'FEEDING',
+  'DEFENDING',
+  'IMMOBILE',
+]);
 
-export const algaePickup = pgEnum('AlgaePickup', ['NONE', 'GROUND', 'REEF', 'BOTH']);
-
-export const knocksAlgae = pgEnum('KnocksAlgae', ['NO', 'YES']);
-
-export const autoLeave = pgEnum('AutoLeave', ['NO', 'YES']);
-
-export const underShallowCage = pgEnum('UnderShallowCage', ['NO', 'YES']);
-
-export const coralPickup = pgEnum('CoralPickup', ['NONE', 'GROUND', 'STATION', 'BOTH']);
-
-export const bargeResult = pgEnum('BargeResult', [
+export const autoClimb = pgEnum('AutoClimb', [
   'NOT_ATTEMPTED',
-  'PARKED',
-  'SHALLOW',
-  'FAILED_SHALLOW',
-  'DEEP',
-  'FAILED_DEEP',
+  'FAILED',
+  'SUCCEEDED',
+]);
+
+export const beached = pgEnum('Beached', [
+  'ON_FUEL',
+  'ON_BUMP',
+  'BOTH',
+  'NEITHER',
+]);
+
+export const climbPosition = pgEnum('ClimbPosition', ['SIDE', 'MIDDLE']);
+
+export const climbSide = pgEnum('ClimbSide', ['FRONT', 'BACK']);
+
+export const endgameClimb = pgEnum('EndgameClimb', [
+  'NOT_ATTEMPTED',
+  'FAILED',
+  'L1',
+  'L2',
+  'L3',
+]);
+
+export const feederType = pgEnum('FeederType', [
+  'CONTINUOUS',
+  'STOP_TO_SHOOT',
+  'DUMP',
+]);
+
+export const fieldTraversal = pgEnum('FieldTraversal', [
+  'TRENCH',
+  'BUMP',
+  'BOTH',
+  'NONE',
+]);
+
+export const intakeType = pgEnum('IntakeType', [
+  'GROUND',
+  'OUTPOST',
+  'BOTH',
+  'NEITHER',
 ]);
 
 export const warningType = pgEnum('WarningType', ['AUTO_LEAVE', 'BREAK']);

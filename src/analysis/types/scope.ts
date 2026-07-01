@@ -1,6 +1,1 @@
-export type AnalysisScope = {
-  team?: number;
-  match?: number;
-  tournament?: string;
-  report?: string;
-};
+export type AnalysisScope = 'REPORT' | 'MATCH' | 'TEAM' | 'TOURNAMENT' | 'ALL';

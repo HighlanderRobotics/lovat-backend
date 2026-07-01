@@ -2,11 +2,14 @@ import { pgTable, varchar, integer, boolean, timestamp } from 'drizzle-orm/pg-co
 import { relations } from 'drizzle-orm';
 import {
   robotRole,
-  algaePickup,
-  coralPickup,
-  bargeResult,
-  knocksAlgae,
-  underShallowCage,
+  autoClimb,
+  beached,
+  climbPosition,
+  climbSide,
+  endgameClimb,
+  feederType,
+  fieldTraversal,
+  intakeType,
   eventAction,
   position,
 } from './enums';
@@ -18,14 +21,21 @@ export const scoutReports = pgTable('ScoutReport', {
   teamMatchKey: varchar('teamMatchKey').notNull(),
   startTime: timestamp('startTime', { mode: 'date' }).notNull(),
   notes: varchar('notes').notNull(),
-  robotRole: robotRole('robotRole').notNull(),
-  algaePickup: algaePickup('algaePickup').notNull(),
-  coralPickup: coralPickup('coralPickup').notNull(),
-  bargeResult: bargeResult('bargeResult').notNull(),
-  knocksAlgae: knocksAlgae('knocksAlgae').notNull(),
-  underShallowCage: underShallowCage('underShallowCage').notNull(),
-  robotBrokeDescription: varchar('robotBrokeDescription'),
+  robotRoles: robotRole('robotRoles').array().notNull(),
   driverAbility: integer('driverAbility').notNull(),
+  accuracy: integer('accuracy'),
+  beached: beached('beached').notNull(),
+  climbPosition: climbPosition('climbPosition'),
+  climbSide: climbSide('climbSide'),
+  defenseEffectiveness: integer('defenseEffectiveness').notNull(),
+  feederTypes: feederType('feederTypes').array().notNull(),
+  intakeType: intakeType('intakeType').notNull(),
+  fieldTraversal: fieldTraversal('fieldTraversal').notNull(),
+  scoresWhileMoving: boolean('scoresWhileMoving').notNull(),
+  disrupts: boolean('disrupts').notNull(),
+  endgameClimb: endgameClimb('endgameClimb').notNull(),
+  autoClimb: autoClimb('autoClimb').notNull(),
+  robotBrokeDescription: varchar('robotBrokeDescription'),
   scouterUuid: varchar('scouterUuid').notNull(),
 });
 
@@ -35,6 +45,7 @@ export const events = pgTable('Event', {
   action: eventAction('action').notNull(),
   position: position('position').notNull(),
   points: integer('points').notNull(),
+  quantity: integer('quantity'),
   scoutReportUuid: varchar('scoutReportUuid').notNull(),
 });
 
@@ -55,16 +66,19 @@ export const scouterScheduleShifts = pgTable('ScouterScheduleShift', {
   endMatchOrdinalNumber: integer('endMatchOrdinalNumber').notNull(),
 });
 
-export const scouterScheduleShiftsRelations = relations(scouterScheduleShifts, ({ one }) => ({
-  sourceTeam: one(registeredTeams, {
-    fields: [scouterScheduleShifts.sourceTeamNumber],
-    references: [registeredTeams.number],
+export const scouterScheduleShiftsRelations = relations(
+  scouterScheduleShifts,
+  ({ one }) => ({
+    sourceTeam: one(registeredTeams, {
+      fields: [scouterScheduleShifts.sourceTeamNumber],
+      references: [registeredTeams.number],
+    }),
+    tournament: one(tournaments, {
+      fields: [scouterScheduleShifts.tournamentKey],
+      references: [tournaments.key],
+    }),
   }),
-  tournament: one(tournaments, {
-    fields: [scouterScheduleShifts.tournamentKey],
-    references: [tournaments.key],
-  }),
-}));
+);
 
 export const scoutReportsRelations = relations(scoutReports, ({ many, one }) => ({
   events: many(events),
@@ -81,9 +95,12 @@ export const eventsRelations = relations(events, ({ one }) => ({
   }),
 }));
 
-export const scoutReportsTeamMatchRelations = relations(scoutReports, ({ one }) => ({
-  teamMatch: one(teamMatchData, {
-    fields: [scoutReports.teamMatchKey],
-    references: [teamMatchData.key],
+export const scoutReportsTeamMatchRelations = relations(
+  scoutReports,
+  ({ one }) => ({
+    teamMatch: one(teamMatchData, {
+      fields: [scoutReports.teamMatchKey],
+      references: [teamMatchData.key],
+    }),
   }),
-}));
+);
