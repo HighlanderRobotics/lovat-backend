@@ -41,9 +41,12 @@ export default $config({
      */
     const api = new sst.aws.ApiGatewayV2('api', {
       cors: {
-        allowOrigins: ['*'],
-        allowMethods: ['*'],
-        allowHeaders: ['*'],
+        allowOrigins:
+          $app.stage === 'production'
+            ? ['https://lovat.app', 'https://www.lovat.app']
+            : ['http://localhost:3000', 'http://localhost:5173'],
+        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowHeaders: ['authorization', 'content-type', 'x-request-id'],
       },
     });
 
@@ -51,7 +54,7 @@ export default $config({
      * Catch-all server route
      */
     api.route('ANY /{proxy+}', {
-      handler: 'src/lambda.handler',
+      handler: 'src/entrypoints/lambda.handler',
       vpc,
 
       environment: {
@@ -63,6 +66,10 @@ export default $config({
         REDIS_HOST: redis.host,
         REDIS_PORT: redis.port.toString(),
         STAGE: $app.stage,
+        NODE_ENV: $app.stage === 'production' ? 'production' : 'development',
+        AUTH0_DOMAIN: process.env.AUTH0_DOMAIN ?? '',
+        AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE ?? 'https://api.lovat.app',
+        API_VERSION: '0.1.0',
       },
 
       link: [postgres, redis],
