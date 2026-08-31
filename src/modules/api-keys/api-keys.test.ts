@@ -142,6 +142,11 @@ describe('api keys module', () => {
           return [];
         },
       },
+      teams: {
+        async list() {
+          return { teams: [], count: 0 };
+        },
+      },
       authenticator: {
         async authenticate(token) {
           const owner = [analyst, teammate, lead, outsider, unverified].find(

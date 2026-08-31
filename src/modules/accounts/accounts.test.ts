@@ -60,6 +60,11 @@ describe('accounts module', () => {
           return [];
         },
       },
+      teams: {
+        async list() {
+          return { teams: [], count: 0 };
+        },
+      },
       authenticator: {
         async authenticate(token) {
           return token === 'valid-token'

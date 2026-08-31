@@ -108,6 +108,11 @@ describe('tournaments module', () => {
           throw new Error('Not used by this test');
         },
       },
+      teams: {
+        async list() {
+          return { teams: [], count: 0 };
+        },
+      },
       authenticator: {
         async authenticate(token) {
           return token === 'valid-token'
