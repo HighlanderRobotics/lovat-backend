@@ -65,6 +65,17 @@ describe('accounts module', () => {
           return { teams: [], count: 0 };
         },
       },
+      scouters: {
+        async list() {
+          return [];
+        },
+        async create() {
+          throw new Error('Not used by this test');
+        },
+        async update() {
+          throw new Error('Not used by this test');
+        },
+      },
       authenticator: {
         async authenticate(token) {
           return token === 'valid-token'
