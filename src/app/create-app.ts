@@ -4,6 +4,7 @@ import type { AppDependencies } from './dependencies';
 import { createAccountsRouter } from '../modules/accounts';
 import { createApiKeysRouter } from '../modules/api-keys';
 import { createTournamentsRouter } from '../modules/tournaments';
+import { createTeamsRouter } from '../modules/teams';
 import { handleErrors } from '../platform/http/errors';
 import { requestId } from '../platform/http/request-id';
 
@@ -35,6 +36,14 @@ export function createApp(dependencies: AppDependencies) {
     '/v2/tournaments',
     createTournamentsRouter({
       tournaments: dependencies.tournaments,
+      authenticator: dependencies.authenticator,
+    })
+  );
+
+  app.route(
+    '/v2/teams',
+    createTeamsRouter({
+      teams: dependencies.teams,
       authenticator: dependencies.authenticator,
     })
   );
