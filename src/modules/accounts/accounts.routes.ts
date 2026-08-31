@@ -1,0 +1,84 @@
+import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
+import type { AppEnvironment } from '../../app/context';
+import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import type { Authenticator } from '../../platform/auth/types';
+import { ErrorResponseSchema } from '../../platform/http/contracts';
+import { assertCanDeleteAccount } from './accounts.policy';
+import { AccountResponseSchema } from './accounts.contracts';
+import type { AccountsService } from './accounts.service';
+
+type AccountsRouteDependencies = {
+  accounts: AccountsService;
+  authenticator: Authenticator;
+};
+
+const getCurrentAccountRoute = createRoute({
+  method: 'get',
+  path: '/me',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    200: {
+      description: 'The authenticated account',
+      content: { 'application/json': { schema: AccountResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+const deleteCurrentAccountRoute = createRoute({
+  method: 'delete',
+  path: '/me',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    204: { description: 'Account deleted' },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Deletion is forbidden',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
+  const router = new OpenAPIHono<AppEnvironment>();
+  router.use('*', dashboardAuth(dependencies.authenticator));
+
+  router.openapi(getCurrentAccountRoute, async (context) => {
+    const identity = context.get('auth');
+    const account = await dependencies.accounts.getRequired(identity.userId);
+    return context.json(
+      {
+        id: account.id,
+        teamNumber: account.teamNumber,
+        email: account.email,
+        emailVerified: account.emailVerified,
+        username: account.username,
+        role: account.role,
+      },
+      200
+    );
+  });
+
+  router.openapi(deleteCurrentAccountRoute, async (context) => {
+    const identity = context.get('auth');
+    assertCanDeleteAccount(identity, identity.userId);
+    await dependencies.accounts.delete(identity.userId);
+    return context.body(null, 204);
+  });
+
+  return router;
+}

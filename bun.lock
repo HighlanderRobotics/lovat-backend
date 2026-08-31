@@ -6,11 +6,10 @@
       "name": "lovat-backend",
       "dependencies": {
         "@hono/zod-openapi": "^1.4.0",
-        "axios": "^1.18.0",
         "drizzle-orm": "^0.45.2",
         "drizzle-zod": "^0.8.3",
-        "hono": "^4.12.25",
-        "ioredis": "^5.11.1",
+        "hono": "^4.12.26",
+        "jose": "5.2.3",
         "pg": "^8.21.0",
         "sst": "3.17.25",
         "zod": "^4.4.3",

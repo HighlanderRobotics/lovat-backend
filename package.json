@@ -1,18 +1,22 @@
 {
   "name": "lovat-backend",
-  "module": "index.ts",
+  "module": "src/entrypoints/server.ts",
   "version": "0.1.0",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "NODE_ENV=development bun --watch src/server.ts",
-    "build": "tsc",
-    "start": "bun dist/server.js",
-    "test": "tsc",
+    "dev": "NODE_ENV=development bun --watch src/entrypoints/server.ts",
+    "start": "bun src/entrypoints/server.ts",
+    "build": "bun run typecheck",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "deploy": "sst deploy"
   },
   "devDependencies": {
     "@types/aws-lambda": "8.10.159",
@@ -32,11 +36,10 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.4.0",
-    "axios": "^1.18.0",
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",
     "hono": "^4.12.26",
-    "ioredis": "^5.11.1",
+    "jose": "5.2.3",
     "pg": "^8.21.0",
     "sst": "3.17.25",
     "zod": "^4.4.3"
