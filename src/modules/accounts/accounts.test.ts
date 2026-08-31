@@ -52,6 +52,14 @@ describe('accounts module', () => {
           throw new Error('Not used by this test');
         },
       },
+      tournaments: {
+        async list() {
+          return { tournaments: [], count: 0 };
+        },
+        async listTeams() {
+          return [];
+        },
+      },
       authenticator: {
         async authenticate(token) {
           return token === 'valid-token'
