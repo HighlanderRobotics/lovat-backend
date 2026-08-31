@@ -2,8 +2,9 @@ import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
 import { dashboardAuth } from '../../platform/auth/dashboard-auth';
 import type { Authenticator } from '../../platform/auth/types';
+import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { assertCanDeleteAccount } from './accounts.policy';
-import { AccountResponseSchema, ErrorResponseSchema } from './accounts.contracts';
+import { AccountResponseSchema } from './accounts.contracts';
 import type { AccountsService } from './accounts.service';
 
 type AccountsRouteDependencies = {

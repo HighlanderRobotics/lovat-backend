@@ -26,6 +26,17 @@ The in-progress v2 Lovat API, structured as a Hono modular monolith.
 
 The health endpoint is available at `GET /v2/health`.
 
+## Implemented API
+
+- `GET /v2/accounts/me` and `DELETE /v2/accounts/me`
+- `GET /v2/api-keys` and `POST /v2/api-keys`
+- `PATCH /v2/api-keys/{uuid}` and `DELETE /v2/api-keys/{uuid}`
+- `GET /v2/openapi.json`
+
+Dashboard routes require an Auth0 bearer token. API-key management additionally requires
+membership in an email-verified team; analysts manage their own keys, while scouting leads
+can manage keys belonging to members of their team.
+
 ## Quality checks
 
 ```sh

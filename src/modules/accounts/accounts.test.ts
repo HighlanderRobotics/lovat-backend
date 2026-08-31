@@ -10,7 +10,7 @@ const originalAccount: Account = {
   email: 'user@example.com',
   emailVerified: true,
   username: 'scouter',
-  role: 'MEMBER',
+  role: 'ANALYST',
   tournamentSourceRule: { mode: 'EXCLUDE', items: [] },
   teamSourceRule: { mode: 'EXCLUDE', items: [] },
 };
@@ -38,6 +38,20 @@ describe('accounts module', () => {
 
     dependencies = {
       accounts: createAccountsService(repository),
+      apiKeys: {
+        async list() {
+          return [];
+        },
+        async create() {
+          throw new Error('Not used by this test');
+        },
+        async rename() {
+          throw new Error('Not used by this test');
+        },
+        async revoke() {
+          throw new Error('Not used by this test');
+        },
+      },
       authenticator: {
         async authenticate(token) {
           return token === 'valid-token'
@@ -61,7 +75,7 @@ describe('accounts module', () => {
       email: 'user@example.com',
       emailVerified: true,
       username: 'scouter',
-      role: 'MEMBER',
+      role: 'ANALYST',
     });
   });
 

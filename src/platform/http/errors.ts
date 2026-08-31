@@ -19,6 +19,12 @@ export class Unauthorized extends HttpError {
   }
 }
 
+export class BadRequest extends HttpError {
+  constructor(message = 'Invalid request') {
+    super(400, 'BAD_REQUEST', message);
+  }
+}
+
 export class Forbidden extends HttpError {
   constructor(message = 'Forbidden') {
     super(403, 'FORBIDDEN', message);

@@ -31,7 +31,7 @@ export function createAccountsRepository(database: Database): AccountsRepository
           id: profile.id,
           email: profile.email,
           emailVerified: profile.emailVerified,
-          role: 'MEMBER',
+          role: 'ANALYST',
         })
         .onConflictDoUpdate({
           target: users.id,
