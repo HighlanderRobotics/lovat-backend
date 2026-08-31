@@ -31,6 +31,7 @@ The health endpoint is available at `GET /v2/health`.
 - `GET /v2/accounts/me` and `DELETE /v2/accounts/me`
 - `GET /v2/api-keys` and `POST /v2/api-keys`
 - `PATCH /v2/api-keys/{uuid}` and `DELETE /v2/api-keys/{uuid}`
+- `GET /v2/tournaments` and `GET /v2/tournaments/{key}/teams`
 - `GET /v2/openapi.json`
 
 Dashboard routes require an Auth0 bearer token. API-key management additionally requires

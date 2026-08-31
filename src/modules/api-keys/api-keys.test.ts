@@ -134,6 +134,14 @@ describe('api keys module', () => {
           throw new Error('Not used by this test');
         },
       },
+      tournaments: {
+        async list() {
+          return { tournaments: [], count: 0 };
+        },
+        async listTeams() {
+          return [];
+        },
+      },
       authenticator: {
         async authenticate(token) {
           const owner = [analyst, teammate, lead, outsider, unverified].find(

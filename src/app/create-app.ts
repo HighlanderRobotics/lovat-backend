@@ -3,6 +3,7 @@ import type { AppEnvironment } from './context';
 import type { AppDependencies } from './dependencies';
 import { createAccountsRouter } from '../modules/accounts';
 import { createApiKeysRouter } from '../modules/api-keys';
+import { createTournamentsRouter } from '../modules/tournaments';
 import { handleErrors } from '../platform/http/errors';
 import { requestId } from '../platform/http/request-id';
 
@@ -26,6 +27,14 @@ export function createApp(dependencies: AppDependencies) {
     '/v2/api-keys',
     createApiKeysRouter({
       apiKeys: dependencies.apiKeys,
+      authenticator: dependencies.authenticator,
+    })
+  );
+
+  app.route(
+    '/v2/tournaments',
+    createTournamentsRouter({
+      tournaments: dependencies.tournaments,
       authenticator: dependencies.authenticator,
     })
   );
