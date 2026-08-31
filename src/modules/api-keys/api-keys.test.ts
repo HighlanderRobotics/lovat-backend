@@ -133,6 +133,9 @@ describe('api keys module', () => {
         async delete() {
           throw new Error('Not used by this test');
         },
+        async updateSettings() {
+          throw new Error('Not used by this test');
+        },
       },
       tournaments: {
         async list() {

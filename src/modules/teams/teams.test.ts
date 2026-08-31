@@ -51,6 +51,9 @@ describe('teams module', () => {
         async delete() {
           throw new Error('Not used by this test');
         },
+        async updateSettings() {
+          throw new Error('Not used by this test');
+        },
       },
       apiKeys: {
         async list() {

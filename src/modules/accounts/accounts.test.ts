@@ -34,6 +34,11 @@ describe('accounts module', () => {
         storedAccount = null;
         return true;
       },
+      async updateSettings(id, settings) {
+        if (storedAccount?.id !== id) return null;
+        storedAccount = { ...storedAccount, ...settings };
+        return storedAccount;
+      },
     };
 
     dependencies = {
@@ -120,5 +125,38 @@ describe('accounts module', () => {
       headers: { authorization: 'Bearer valid-token' },
     });
     expect(missing.status).toBe(404);
+  });
+
+  it('reads and updates typed account settings', async () => {
+    const app = createApp(dependencies);
+    const updated = await app.request('/v2/accounts/me/settings', {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        username: 'New name',
+        teamSourceRule: { mode: 'INCLUDE', items: [8033, 254] },
+      }),
+    });
+    expect(updated.status).toBe(200);
+    const expectedSettings = {
+      username: 'New name',
+      teamSourceRule: { mode: 'INCLUDE', items: [8033, 254] },
+      tournamentSourceRule: { mode: 'EXCLUDE', items: [] },
+    };
+    expect(await updated.json()).toEqual(expectedSettings);
+
+    const fetched = await app.request('/v2/accounts/me/settings', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(await fetched.json()).toEqual(expectedSettings);
+  });
+
+  it('rejects empty settings updates', async () => {
+    const response = await createApp(dependencies).request('/v2/accounts/me/settings', {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(response.status).toBe(400);
   });
 });

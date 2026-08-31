@@ -3,8 +3,13 @@ import type { AppEnvironment } from '../../app/context';
 import { dashboardAuth } from '../../platform/auth/dashboard-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
+import { BadRequest } from '../../platform/http/errors';
 import { assertCanDeleteAccount } from './accounts.policy';
-import { AccountResponseSchema } from './accounts.contracts';
+import {
+  AccountResponseSchema,
+  AccountSettingsSchema,
+  AccountSettingsUpdateSchema,
+} from './accounts.contracts';
 import type { AccountsService } from './accounts.service';
 
 type AccountsRouteDependencies = {
@@ -53,8 +58,59 @@ const deleteCurrentAccountRoute = createRoute({
   },
 });
 
+const getAccountSettingsRoute = createRoute({
+  method: 'get',
+  path: '/me/settings',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    200: {
+      description: 'The authenticated account settings',
+      content: { 'application/json': { schema: AccountSettingsSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+const updateAccountSettingsRoute = createRoute({
+  method: 'patch',
+  path: '/me/settings',
+  security: [{ DashboardAuth: [] }],
+  request: {
+    body: { content: { 'application/json': { schema: AccountSettingsUpdateSchema } } },
+  },
+  responses: {
+    200: {
+      description: 'Updated account settings',
+      content: { 'application/json': { schema: AccountSettingsSchema } },
+    },
+    400: {
+      description: 'Invalid settings',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
 export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
-  const router = new OpenAPIHono<AppEnvironment>();
+  const router = new OpenAPIHono<AppEnvironment>({
+    defaultHook(result) {
+      if (!result.success) throw new BadRequest();
+    },
+  });
   router.use('*', dashboardAuth(dependencies.authenticator));
 
   router.openapi(getCurrentAccountRoute, async (context) => {
@@ -78,6 +134,33 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
     assertCanDeleteAccount(identity, identity.userId);
     await dependencies.accounts.delete(identity.userId);
     return context.body(null, 204);
+  });
+
+  router.openapi(getAccountSettingsRoute, async (context) => {
+    const account = await dependencies.accounts.getRequired(context.get('auth').userId);
+    return context.json(
+      {
+        username: account.username,
+        teamSourceRule: account.teamSourceRule,
+        tournamentSourceRule: account.tournamentSourceRule,
+      },
+      200
+    );
+  });
+
+  router.openapi(updateAccountSettingsRoute, async (context) => {
+    const account = await dependencies.accounts.updateSettings(
+      context.get('auth').userId,
+      context.req.valid('json')
+    );
+    return context.json(
+      {
+        username: account.username,
+        teamSourceRule: account.teamSourceRule,
+        tournamentSourceRule: account.tournamentSourceRule,
+      },
+      200
+    );
   });
 
   return router;

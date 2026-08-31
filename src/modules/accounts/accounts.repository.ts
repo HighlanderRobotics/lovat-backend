@@ -15,6 +15,10 @@ export interface AccountsRepository {
   findById(id: string): Promise<Account | null>;
   upsertFromAuth0(profile: Auth0Profile): Promise<Account>;
   deleteById(id: string): Promise<boolean>;
+  updateSettings(
+    id: string,
+    settings: Pick<Account, 'username' | 'teamSourceRule' | 'tournamentSourceRule'>
+  ): Promise<Account | null>;
 }
 
 export function createAccountsRepository(database: Database): AccountsRepository {
@@ -51,6 +55,15 @@ export function createAccountsRepository(database: Database): AccountsRepository
         .where(eq(users.id, id))
         .returning({ id: users.id });
       return deleted.length > 0;
+    },
+
+    async updateSettings(id, settings) {
+      const [account] = await database
+        .update(users)
+        .set(settings)
+        .where(eq(users.id, id))
+        .returning();
+      return account ?? null;
     },
   };
 }
