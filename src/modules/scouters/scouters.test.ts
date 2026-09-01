@@ -133,6 +133,12 @@ describe('scouters module', () => {
         async promoteToScoutingLead() {
           throw new Error('Not used by this test');
         },
+        async getTeamProfile() {
+          throw new Error('Not used by this test');
+        },
+        async updateTeamWebsite() {
+          throw new Error('Not used by this test');
+        },
       },
       apiKeys: {
         async list() {

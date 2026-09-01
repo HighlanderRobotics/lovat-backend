@@ -64,6 +64,20 @@ export function createAccountsService(repository: AccountsRepository) {
       if (!updated) throw new NotFound('Account to promote not found');
       return updated;
     },
+    async getTeamProfile(id: string) {
+      const account = await teamAccount(id, true);
+      const team = await repository.findRegisteredTeam(account.teamNumber!);
+      if (!team) throw new NotFound('Registered team not found');
+      return { number: team.number, email: team.email, website: team.website };
+    },
+    async updateTeamWebsite(id: string, website: string | null) {
+      const account = await repository.findById(id);
+      if (!account) throw new NotFound('Account not found');
+      if (account.teamNumber === null) throw new Forbidden('A team is required');
+      const team = await repository.updateTeamWebsite(account.teamNumber, website);
+      if (!team) throw new NotFound('Registered team not found');
+      return { number: team.number, email: team.email, website: team.website };
+    },
   };
 }
 

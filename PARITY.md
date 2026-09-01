@@ -31,7 +31,8 @@ tests are present.
 - [x] Public team-code validation and code-scoped active scouter roster
 - [x] Code-authenticated public scouter schedules with match/team/alliance assignments
 - [x] Code-authenticated public tournament catalog and scheduled-event views
-- [ ] Team email and website management
+- [x] Lead-only team contact read and authenticated website persistence
+- [ ] Team email change initiation and verification delivery
 - [x] Verified-team user list, analyst list, and scouting-lead promotion
 
 ## Remaining analysis work

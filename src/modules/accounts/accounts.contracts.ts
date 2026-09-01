@@ -53,3 +53,13 @@ export const TeamMemberListSchema = z
 export const PromoteScoutingLeadSchema = z
   .object({ userId: z.string().min(1) })
   .openapi('PromoteScoutingLead');
+export const TeamProfileSchema = z
+  .object({
+    number: z.number().int().positive(),
+    email: z.email(),
+    website: z.string().nullable(),
+  })
+  .openapi('TeamProfile');
+export const TeamWebsiteUpdateSchema = z
+  .object({ website: z.string().trim().min(1).max(500).nullable() })
+  .openapi('TeamWebsiteUpdate');

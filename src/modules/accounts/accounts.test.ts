@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { createApp } from '../../app/create-app';
 import type { AppDependencies } from '../../app/dependencies';
-import type { Account, AccountsRepository } from './accounts.repository';
+import type { Account, AccountsRepository, RegisteredTeam } from './accounts.repository';
 import { createAccountsService } from './accounts.service';
 
 const originalAccount: Account = {
@@ -18,6 +18,7 @@ const originalAccount: Account = {
 describe('accounts module', () => {
   let storedAccount: Account | null;
   let teammateAccount: Account;
+  let registeredTeam: RegisteredTeam;
   let dependencies: AppDependencies;
 
   beforeEach(() => {
@@ -27,6 +28,15 @@ describe('accounts module', () => {
       id: 'auth0|user-2',
       email: 'teammate@example.com',
       username: 'teammate',
+    };
+    registeredTeam = {
+      number: 8033,
+      code: 'team-code',
+      email: 'team@example.com',
+      emailVerified: true,
+      timeCreated: new Date('2026-01-01T00:00:00Z'),
+      teamApproved: true,
+      website: null,
     };
 
     const repository: AccountsRepository = {
@@ -68,6 +78,14 @@ describe('accounts module', () => {
           return teammateAccount;
         }
         return null;
+      },
+      async findRegisteredTeam(teamNumber) {
+        return teamNumber === registeredTeam.number ? registeredTeam : null;
+      },
+      async updateTeamWebsite(teamNumber, website) {
+        if (teamNumber !== registeredTeam.number) return null;
+        registeredTeam = { ...registeredTeam, website };
+        return registeredTeam;
       },
     };
 
@@ -262,6 +280,38 @@ describe('accounts module', () => {
       headers: { authorization: 'Bearer valid-token' },
     });
     expect(response.status).toBe(403);
+  });
+
+  it('lets leads read team contact details and any team member update the website', async () => {
+    const app = createApp(dependencies);
+    const updated = await app.request('/v2/accounts/team/website', {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ website: 'https://team8033.org' }),
+    });
+    expect(updated.status).toBe(200);
+    expect((await updated.json()) as unknown).toEqual({
+      number: 8033,
+      email: 'team@example.com',
+      website: 'https://team8033.org',
+    });
+    expect(
+      (
+        await app.request('/v2/accounts/team/profile', {
+          headers: { authorization: 'Bearer valid-token' },
+        })
+      ).status
+    ).toBe(403);
+    storedAccount = { ...storedAccount!, role: 'SCOUTING_LEAD' };
+    const profile = await app.request('/v2/accounts/team/profile', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(profile.status).toBe(200);
+    expect(await profile.json()).toEqual({
+      number: 8033,
+      email: 'team@example.com',
+      website: 'https://team8033.org',
+    });
   });
 });
 

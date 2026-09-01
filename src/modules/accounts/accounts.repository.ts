@@ -4,6 +4,7 @@ import { registeredTeams, users } from '../../platform/database/schema';
 
 export type Account = typeof users.$inferSelect;
 export type AccountRole = Account['role'];
+export type RegisteredTeam = typeof registeredTeams.$inferSelect;
 
 export type Auth0Profile = {
   id: string;
@@ -22,6 +23,8 @@ export interface AccountsRepository {
   isTeamVerified(teamNumber: number): Promise<boolean>;
   listTeamMembers(teamNumber: number, role?: AccountRole): Promise<Account[]>;
   updateRole(id: string, role: AccountRole): Promise<Account | null>;
+  findRegisteredTeam(teamNumber: number): Promise<RegisteredTeam | null>;
+  updateTeamWebsite(teamNumber: number, website: string | null): Promise<RegisteredTeam | null>;
 }
 
 export function createAccountsRepository(database: Database): AccountsRepository {
@@ -90,6 +93,22 @@ export function createAccountsRepository(database: Database): AccountsRepository
         .where(eq(users.id, id))
         .returning();
       return account ?? null;
+    },
+    async findRegisteredTeam(teamNumber) {
+      const [team] = await database
+        .select()
+        .from(registeredTeams)
+        .where(eq(registeredTeams.number, teamNumber))
+        .limit(1);
+      return team ?? null;
+    },
+    async updateTeamWebsite(teamNumber, website) {
+      const [team] = await database
+        .update(registeredTeams)
+        .set({ website })
+        .where(eq(registeredTeams.number, teamNumber))
+        .returning();
+      return team ?? null;
     },
   };
 }

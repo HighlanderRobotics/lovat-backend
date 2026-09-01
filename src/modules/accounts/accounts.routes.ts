@@ -12,6 +12,8 @@ import {
   PromoteScoutingLeadSchema,
   TeamMemberListSchema,
   TeamMemberSchema,
+  TeamProfileSchema,
+  TeamWebsiteUpdateSchema,
 } from './accounts.contracts';
 import type { AccountsService } from './accounts.service';
 
@@ -173,6 +175,35 @@ const promoteScoutingLeadRoute = createRoute({
     ...teamErrors,
   },
 });
+const getTeamProfileRoute = createRoute({
+  method: 'get',
+  path: '/team/profile',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    200: {
+      description: 'Lead-only team contact profile',
+      content: { 'application/json': { schema: TeamProfileSchema } },
+    },
+    ...teamErrors,
+  },
+});
+const updateTeamWebsiteRoute = createRoute({
+  method: 'patch',
+  path: '/team/website',
+  security: [{ DashboardAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: TeamWebsiteUpdateSchema } } } },
+  responses: {
+    200: {
+      description: 'Updated team profile',
+      content: { 'application/json': { schema: TeamProfileSchema } },
+    },
+    400: {
+      description: 'Invalid website',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    ...teamErrors,
+  },
+});
 
 export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
   const router = new OpenAPIHono<AppEnvironment>({
@@ -259,6 +290,18 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
     );
     return context.json(teamMember(account), 200);
   });
+  router.openapi(getTeamProfileRoute, async (context) =>
+    context.json(await dependencies.accounts.getTeamProfile(context.get('auth').userId), 200)
+  );
+  router.openapi(updateTeamWebsiteRoute, async (context) =>
+    context.json(
+      await dependencies.accounts.updateTeamWebsite(
+        context.get('auth').userId,
+        context.req.valid('json').website
+      ),
+      200
+    )
+  );
 
   return router;
 }
