@@ -7,6 +7,7 @@ import {
   scouters,
   scoutReports,
   teamMatchData,
+  tournaments,
   users,
 } from '../../platform/database/schema';
 
@@ -20,6 +21,7 @@ export type ScoutReportRecord = ScoutReport & {
   sourceTeamNumber: number;
   teamNumber: number;
   tournamentKey: string;
+  tournamentName: string;
 };
 export type MatchScoutReportSummary = Pick<
   ScoutReport,
@@ -97,6 +99,7 @@ export function createScoutReportsRepository(database: Database): ScoutReportsRe
         .select({
           key: teamMatchData.key,
           tournamentKey: teamMatchData.tournamentKey,
+          tournamentName: tournaments.name,
           teamNumber: teamMatchData.teamNumber,
         })
         .from(teamMatchData)
@@ -138,10 +141,12 @@ export function createScoutReportsRepository(database: Database): ScoutReportsRe
           sourceTeamNumber: scouters.sourceTeamNumber,
           teamNumber: teamMatchData.teamNumber,
           tournamentKey: teamMatchData.tournamentKey,
+          tournamentName: tournaments.name,
         })
         .from(scoutReports)
         .innerJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
         .innerJoin(teamMatchData, eq(scoutReports.teamMatchKey, teamMatchData.key))
+        .innerJoin(tournaments, eq(teamMatchData.tournamentKey, tournaments.key))
         .where(eq(scoutReports.uuid, uuid))
         .limit(1);
       return row ?? null;

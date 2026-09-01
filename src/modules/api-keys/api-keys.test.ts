@@ -364,6 +364,9 @@ const unusedMutablePicklists = {
   },
 };
 const unusedScoutReports = {
+  async metrics() {
+    throw new Error('Not used by this test');
+  },
   async listForMatch() {
     return [];
   },

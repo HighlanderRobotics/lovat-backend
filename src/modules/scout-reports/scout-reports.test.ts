@@ -69,6 +69,7 @@ function createMemoryRepository() {
         sourceTeamNumber: 8033,
         teamNumber: 8033,
         tournamentKey: '2026test',
+        tournamentName: 'Test Regional',
       });
       eventRows.set(
         row.uuid,
@@ -266,5 +267,47 @@ describe('scout reports module', () => {
     await expect(service.listForMatch('unverified', '2026test_qm1_8033')).rejects.toThrow(
       'verified team'
     );
+  });
+
+  it('computes the legacy report metrics and autonomous path payload', async () => {
+    const service = createScoutReportsService(memory.repository);
+    await service.create('analyst', {
+      ...baseInput,
+      robotRoles: ['SCORING', 'DEFENDING'],
+      feederTypes: [...baseInput.feederTypes],
+      autoClimb: 'SUCCEEDED',
+      events: [
+        [0, 2, 8],
+        [10, 0, 2],
+        [12, 1, 2, 7],
+        [20, 11, 2],
+        [30, 5, 2],
+        [45, 6, 2],
+        [60, 12, 6],
+        [70, 13, 6, 5],
+      ],
+    });
+    const metrics = await service.metrics('analyst', baseInput.uuid);
+    expect(metrics).toMatchObject({
+      totalPoints: 17,
+      totalBallsFed: 5,
+      volleys: 1,
+      robotRoles: [1, 3],
+      climb: 1,
+      autoClimb: 1,
+      autoClimbStartTime: 20,
+      contactDefenseTime: 15,
+      totalDefenseTime: 15,
+      feedingRate: 0.5,
+      feeds: 1,
+      climbResult: 1,
+      autoPath: {
+        autoPoints: 7,
+        match: '2026test_qm1_8033',
+        tournamentName: 'Test Regional',
+        climb: 1,
+      },
+    });
+    expect(metrics.autoPath.positions.map(({ event }) => event)).toEqual([2, 0, 1, 11]);
   });
 });

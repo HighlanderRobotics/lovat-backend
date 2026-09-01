@@ -13,6 +13,7 @@ import {
   ScoutReportTimelineSchema,
   MatchScoutReportsPathSchema,
   MatchScoutReportsSchema,
+  ScoutReportMetricsSchema,
 } from './scout-reports.contracts';
 import type { ScoutReportsService } from './scout-reports.service';
 
@@ -122,6 +123,19 @@ const matchReportsRoute = createRoute({
     ...errors,
   },
 });
+const metricsRoute = createRoute({
+  method: 'get',
+  path: '/{uuid}/metrics',
+  security: [{ DashboardAuth: [] }],
+  request: { params: ScoutReportPathSchema },
+  responses: {
+    200: {
+      description: 'Legacy metric and autonomous-path analysis for one scout report',
+      content: { 'application/json': { schema: ScoutReportMetricsSchema } },
+    },
+    ...errors,
+  },
+});
 
 export function createScoutReportsRouter(dependencies: {
   scoutReports: ScoutReportsService;
@@ -178,6 +192,12 @@ export function createScoutReportsRouter(dependencies: {
         c.get('auth').userId,
         c.req.valid('param').matchKey
       ),
+      200
+    )
+  );
+  router.openapi(metricsRoute, async (c) =>
+    c.json(
+      await dependencies.scoutReports.metrics(c.get('auth').userId, c.req.valid('param').uuid),
       200
     )
   );

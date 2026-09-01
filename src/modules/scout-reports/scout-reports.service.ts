@@ -1,5 +1,6 @@
 import { BadRequest, Forbidden, NotFound } from '../../platform/http/errors';
 import type { ScoutReportsRepository } from './scout-reports.repository';
+import { calculateScoutReportMetrics } from './scout-report-metrics';
 
 const actions = [
   'START_SCORING',
@@ -29,6 +30,10 @@ const positions = [
   'NONE',
 ] as const;
 const malformedTimelineVersions = new Set(['26.0.3', '26.0.4']);
+const roleNumbers = ['CYCLING', 'SCORING', 'FEEDING', 'DEFENDING', 'IMMOBILE'] as const;
+const endgameNumbers = ['NOT_ATTEMPTED', 'L1', 'L2', 'L3', 'FAILED'] as const;
+const autoClimbNumbers = ['NOT_ATTEMPTED', 'SUCCEEDED', 'FAILED'] as const;
+const feederNumbers = ['CONTINUOUS', 'STOP_TO_SHOOT', 'DUMP'] as const;
 
 type CreateInput = {
   uuid: string;
@@ -189,12 +194,14 @@ export function createScoutReportsService(repository: ScoutReportsRepository) {
         sourceTeamNumber: _sourceTeamNumber,
         teamNumber: _teamNumber,
         tournamentKey: _tournamentKey,
+        tournamentName: _tournamentName,
         scouterName,
         ...publicReport
       } = row;
       void _sourceTeamNumber;
       void _teamNumber;
       void _tournamentKey;
+      void _tournamentName;
       return {
         scoutReport: { ...publicReport, ...(sameTeam ? { scouterName } : {}) },
         events: reportEvents,
@@ -242,6 +249,54 @@ export function createScoutReportsService(repository: ScoutReportsRepository) {
           canModify: user.role === 'SCOUTING_LEAD' && user.teamNumber === sourceTeamNumber,
         })
       );
+    },
+    async metrics(userId: string, uuid: string) {
+      const [user, row, reportEvents] = await Promise.all([
+        account(userId),
+        report(uuid),
+        repository.listEvents(uuid, true),
+      ]);
+      if (user.teamNumber === null || !user.teamVerified)
+        throw new Forbidden('A verified team is required');
+      const metrics = calculateScoutReportMetrics({ ...row, events: reportEvents });
+      const autoEvents = reportEvents.filter(({ time }) => time <= 23);
+      return {
+        totalPoints: metrics.totalPoints,
+        driverAbility: row.driverAbility,
+        accuracy: row.accuracy,
+        totalBallsFed: metrics.totalBallsFed,
+        volleys: metrics.volleys,
+        defenseEffectiveness: row.defenseEffectiveness,
+        robotRoles: row.robotRoles.map((role) => roleNumbers.indexOf(role)),
+        climb: endgameNumbers.indexOf(row.endgameClimb),
+        autoClimb: autoClimbNumbers.indexOf(row.autoClimb),
+        autoClimbStartTime:
+          metrics.autoClimbStartTime === undefined ? 0 : 153 - metrics.autoClimbStartTime,
+        contactDefenseTime: metrics.contactDefenseTime,
+        campingDefenseTime: metrics.campingDefenseTime,
+        totalDefenseTime: metrics.totalDefenseTime,
+        scoringRate: metrics.scoringRate,
+        feedingRate: metrics.feedingRate,
+        feeds: metrics.feeds,
+        feederType: row.feederTypes.map((type) => feederNumbers.indexOf(type)),
+        climbResult: endgameNumbers.indexOf(row.endgameClimb),
+        climbStartTime: metrics.climbStartTime ?? 0,
+        autoPath: {
+          autoPoints: autoEvents.reduce((total, event) => total + event.points, 0),
+          positions: autoEvents.map((event) => ({
+            location: positions.indexOf(event.position),
+            event: actions.indexOf(event.action),
+            time: event.time,
+            quantity: event.points,
+          })),
+          match: row.teamMatchKey,
+          tournamentName: row.tournamentName,
+          climb: autoClimbNumbers.indexOf(row.autoClimb),
+        },
+        note: row.notes,
+        robotBrokeDescription: row.robotBrokeDescription,
+        timeStamp: row.startTime,
+      };
     },
   };
 }

@@ -8,6 +8,7 @@ import type {
   TournamentsRepository,
 } from './tournaments.repository';
 import type { TbaClient } from '../../integrations/tba/tba-client';
+import { calculateScoutReportMetrics } from '../scout-reports/scout-report-metrics';
 
 type MatchTeam = {
   number: number;
@@ -130,45 +131,7 @@ function groupMatchRows(
 
 type ListOptions = Pick<TournamentListOptions, 'filter' | 'limit' | 'offset'>;
 
-const endgamePoints = { NOT_ATTEMPTED: 0, FAILED: 0, L1: 10, L2: 20, L3: 30 } as const;
 const roles = ['CYCLING', 'SCORING', 'FEEDING', 'DEFENDING', 'IMMOBILE'] as const;
-
-function pairedDuration(
-  events: MatchResultStation['scoutReports'][number]['events'],
-  start: string,
-  stop: string
-) {
-  const relevant = events
-    .filter(({ action }) => action === start || action === stop)
-    .sort((left, right) => left.time - right.time);
-  let total = 0;
-  for (let index = 0; index < relevant.length; index += 2) {
-    if (relevant[index]?.action === start && relevant[index + 1]?.action === stop)
-      total += relevant[index + 1].time - relevant[index].time;
-  }
-  return total;
-}
-
-function reportMetrics(report: MatchResultStation['scoutReports'][number]) {
-  const eventPoints = report.events.reduce((total, event) => total + event.points, 0);
-  return {
-    totalPoints: endgamePoints[report.endgameClimb] + eventPoints,
-    autoPoints:
-      report.events
-        .filter(({ time }) => time <= 23)
-        .reduce((total, event) => total + event.points, 0) +
-      (report.autoClimb === 'SUCCEEDED' ? 10 : 0),
-    teleopPoints: report.events
-      .filter(({ time }) => time > 23)
-      .reduce((total, event) => total + event.points, 0),
-    totalDefenseTime:
-      pairedDuration(report.events, 'START_DEFENDING', 'STOP_DEFENDING') +
-      pairedDuration(report.events, 'START_CAMPING', 'STOP_CAMPING'),
-    totalFuelOutputted: report.events
-      .filter(({ action }) => action === 'STOP_FEEDING' || action === 'STOP_SCORING')
-      .reduce((total, event) => total + (event.quantity ?? 0), 0),
-  };
-}
 
 function allianceResults(stations: MatchResultStation[]) {
   const totals = {
@@ -179,7 +142,7 @@ function allianceResults(stations: MatchResultStation[]) {
     teleopPoints: 0,
   };
   const teams = stations.map((station) => {
-    const metrics = station.scoutReports.map(reportMetrics);
+    const metrics = station.scoutReports.map(calculateScoutReportMetrics);
     for (const metric of Object.keys(totals) as (keyof typeof totals)[])
       totals[metric] +=
         metrics.reduce((sum, result) => sum + result[metric], 0) / (metrics.length || 1);

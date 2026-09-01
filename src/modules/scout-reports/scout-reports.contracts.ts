@@ -79,3 +79,43 @@ export const MatchScoutReportSummarySchema = z.object({
 export const MatchScoutReportsSchema = z
   .array(MatchScoutReportSummarySchema)
   .openapi('MatchScoutReports');
+export const ScoutReportMetricsSchema = z
+  .object({
+    totalPoints: z.number(),
+    driverAbility: z.number().int(),
+    accuracy: z.number().int().nullable(),
+    totalBallsFed: z.number(),
+    volleys: z.number().int().nonnegative(),
+    defenseEffectiveness: z.number().int(),
+    robotRoles: z.array(z.number().int().nonnegative()),
+    climb: z.number().int().nonnegative(),
+    autoClimb: z.number().int().nonnegative(),
+    autoClimbStartTime: z.number(),
+    contactDefenseTime: z.number(),
+    campingDefenseTime: z.number(),
+    totalDefenseTime: z.number(),
+    scoringRate: z.number(),
+    feedingRate: z.number(),
+    feeds: z.number().int().nonnegative(),
+    feederType: z.array(z.number().int().nonnegative()),
+    climbResult: z.number().int().nonnegative(),
+    climbStartTime: z.number(),
+    autoPath: z.object({
+      autoPoints: z.number(),
+      positions: z.array(
+        z.object({
+          location: z.number().int().nonnegative(),
+          event: z.number().int().nonnegative(),
+          time: z.number(),
+          quantity: z.number(),
+        })
+      ),
+      match: z.string(),
+      tournamentName: z.string(),
+      climb: z.number().int().nonnegative(),
+    }),
+    note: z.string(),
+    robotBrokeDescription: z.string().nullable(),
+    timeStamp: z.iso.datetime(),
+  })
+  .openapi('ScoutReportMetrics');
