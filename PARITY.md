@@ -25,7 +25,7 @@ tests are present.
       schedule progress
 - [ ] Match results, team tournament status, and on-demand TBA match refresh
 - [x] Mutable picklist CRUD
-- [ ] Shared/scored picklist CRUD
+- [x] Shared/scored picklist CRUD with legacy metric defaults and team-wide access
 - [ ] Registered-team onboarding, verification, approval, and rejection
 - [ ] Team code and public scouter onboarding flows
 - [ ] Team email and website management

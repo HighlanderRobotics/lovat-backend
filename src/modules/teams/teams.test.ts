@@ -107,6 +107,7 @@ describe('teams module', () => {
         },
       },
       mutablePicklists: unusedMutablePicklists,
+      sharedPicklists: unusedMutablePicklists,
       scoutReports: unusedScoutReports,
       authenticator: {
         async authenticate(token) {

@@ -19,6 +19,11 @@ import type { ScoutersService } from '../modules/scouters';
 import type { MutablePicklistsService } from '../modules/mutable-picklists';
 import { createScoutReportsRepository, createScoutReportsService } from '../modules/scout-reports';
 import type { ScoutReportsService } from '../modules/scout-reports';
+import {
+  createSharedPicklistsRepository,
+  createSharedPicklistsService,
+} from '../modules/shared-picklists';
+import type { SharedPicklistsService } from '../modules/shared-picklists';
 
 export type AppDependencies = {
   accounts: AccountsService;
@@ -28,6 +33,7 @@ export type AppDependencies = {
   scouters: ScoutersService;
   mutablePicklists: MutablePicklistsService;
   scoutReports: ScoutReportsService;
+  sharedPicklists: SharedPicklistsService;
   authenticator: Authenticator;
   apiVersion: string;
 };
@@ -42,6 +48,7 @@ export function createProductionDependencies(): AppDependencies {
   const scoutersRepository = createScoutersRepository(database);
   const mutablePicklistsRepository = createMutablePicklistsRepository(database);
   const scoutReportsRepository = createScoutReportsRepository(database);
+  const sharedPicklistsRepository = createSharedPicklistsRepository(database);
 
   return {
     accounts: createAccountsService(accountsRepository),
@@ -51,6 +58,7 @@ export function createProductionDependencies(): AppDependencies {
     scouters: createScoutersService(scoutersRepository),
     mutablePicklists: createMutablePicklistsService(mutablePicklistsRepository),
     scoutReports: createScoutReportsService(scoutReportsRepository),
+    sharedPicklists: createSharedPicklistsService(sharedPicklistsRepository),
     authenticator: createAuth0Authenticator(
       environment.AUTH0_DOMAIN,
       environment.AUTH0_AUDIENCE,
