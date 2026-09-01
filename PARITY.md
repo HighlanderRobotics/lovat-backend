@@ -28,7 +28,8 @@ tests are present.
 - [x] Shared/scored picklist CRUD with legacy metric defaults and team-wide access
 - [ ] Registered-team onboarding, verification, approval, and rejection
 - [x] Public team-code validation and code-scoped active scouter roster
-- [ ] Code-authenticated public scouter schedules and tournament views
+- [x] Code-authenticated public scouter schedules with match/team/alliance assignments
+- [ ] Code-authenticated public scouter tournament views
 - [ ] Team email and website management
 - [x] Verified-team user list, analyst list, and scouting-lead promotion
 

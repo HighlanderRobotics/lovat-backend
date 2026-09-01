@@ -55,6 +55,25 @@ export const MatchCheckResponseSchema = z
   .object({ match: TeamMatchDataSchema, alliance: z.enum(['red', 'blue']) })
   .openapi('MatchCheckResponse');
 
+export const TeamCodeScheduleHeaderSchema = z.object({
+  'x-team-code': z.string().min(1).max(200),
+});
+export const PublicScouterScheduleSchema = z
+  .object({
+    hash: z.string(),
+    data: z.array(
+      z.object({
+        matchType: z.union([z.literal(0), z.literal(1)]),
+        matchNumber: z.number().int().positive(),
+        scouters: z.record(
+          z.string(),
+          z.object({ team: z.number().int().positive(), alliance: z.enum(['red', 'blue']) })
+        ),
+      })
+    ),
+  })
+  .openapi('PublicScouterSchedule');
+
 export const TournamentTeamsResponseSchema = z
   .object({ teams: z.array(TeamSchema) })
   .openapi('TournamentTeamsResponse');

@@ -213,6 +213,68 @@ export function createTournamentsService(repository: TournamentsRepository) {
       );
     },
 
+    async getPublicScouterSchedule(code: string, key: string) {
+      const teamNumber = await repository.findTeamNumberByCode(code);
+      if (teamNumber === null) throw new NotFound('Team code not found');
+      if (!(await repository.exists(key))) throw new NotFound('Tournament not found');
+      const [rows, shifts] = await Promise.all([
+        repository.listMatchReportRows(key),
+        repository.listScouterShifts(teamNumber, key),
+      ]);
+      const highestQualification = Math.max(
+        0,
+        ...rows
+          .filter(({ matchType }) => matchType === 'QUALIFICATION')
+          .map(({ matchNumber }) => matchNumber)
+      );
+      if (highestQualification === 0) throw new BadRequest('Matches are not available');
+      const data: {
+        matchType: 0 | 1;
+        matchNumber: number;
+        scouters: Record<string, { team: number; alliance: 'red' | 'blue' }>;
+      }[] = [];
+      for (const shift of shifts) {
+        for (
+          let ordinal = shift.startMatchOrdinalNumber;
+          ordinal <= shift.endMatchOrdinalNumber;
+          ordinal += 1
+        ) {
+          const matchType = ordinal > highestQualification ? (1 as const) : (0 as const);
+          const matchNumber = matchType === 1 ? ordinal - highestQualification : ordinal;
+          const databaseType = matchType === 1 ? 'ELIMINATION' : 'QUALIFICATION';
+          const matchRows = rows.filter(
+            (row) => row.matchType === databaseType && row.matchNumber === matchNumber
+          );
+          const stations = new Map<number, MatchReportRow>();
+          for (const row of matchRows) stations.set(Number(row.key.at(-1)), row);
+          if (stations.size === 0) continue;
+          if (stations.size !== 6) throw new BadRequest('Match has not imported correctly');
+          const assignments = [
+            shift.team1,
+            shift.team2,
+            shift.team3,
+            shift.team4,
+            shift.team5,
+            shift.team6,
+          ];
+          const scouterMap: Record<string, { team: number; alliance: 'red' | 'blue' }> = {};
+          for (let station = 0; station < 6; station += 1) {
+            for (const scouter of assignments[station]) {
+              scouterMap[scouter.uuid] = {
+                team: stations.get(station)!.teamNumber,
+                alliance: station < 3 ? 'red' : 'blue',
+              };
+            }
+          }
+          data.push({ matchType, matchNumber, scouters: scouterMap });
+        }
+      }
+      return {
+        hash: createHash('sha256').update(JSON.stringify(shifts)).digest('hex'),
+        data,
+      };
+    },
+
     async getScouterSchedule(userId: string, key: string) {
       if (!(await repository.exists(key))) throw new NotFound('Tournament not found');
       const teamNumber = await repository.findVerifiedUserTeamNumber(userId);

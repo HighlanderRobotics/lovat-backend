@@ -92,6 +92,7 @@ export interface TournamentsRepository {
     matchType: 'QUALIFICATION' | 'ELIMINATION';
   }): Promise<typeof teamMatchData.$inferSelect | null>;
   listMatchReportRows(tournamentKey: string): Promise<MatchReportRow[]>;
+  findTeamNumberByCode(code: string): Promise<number | null>;
 }
 
 export function createTournamentsRepository(database: Database): TournamentsRepository {
@@ -260,6 +261,14 @@ export function createTournamentsRepository(database: Database): TournamentsRepo
         .leftJoin(scoutReports, eq(scoutReports.teamMatchKey, teamMatchData.key))
         .leftJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
         .where(eq(teamMatchData.tournamentKey, tournamentKey));
+    },
+    async findTeamNumberByCode(code) {
+      const [team] = await database
+        .select({ number: registeredTeams.number })
+        .from(registeredTeams)
+        .where(eq(registeredTeams.code, code))
+        .limit(1);
+      return team?.number ?? null;
     },
     async findShift(uuid) {
       const [row] = await database

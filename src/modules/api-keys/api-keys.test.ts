@@ -159,6 +159,9 @@ describe('api keys module', () => {
         async listMatches() {
           return [];
         },
+        async getPublicScouterSchedule() {
+          throw new Error('Not used by this test');
+        },
         async getScouterSchedule() {
           return { hash: '', data: [] };
         },

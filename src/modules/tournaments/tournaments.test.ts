@@ -130,6 +130,9 @@ function createMemoryRepository(): TournamentsRepository {
         matchType: 'QUALIFICATION',
       };
     },
+    async findTeamNumberByCode(code) {
+      return code === 'team-8033' ? 8033 : null;
+    },
     async listMatchReportRows(key) {
       if (key !== '2026alpha') return [];
       return [8033, 254, 1678, 4414, 5940, 971].flatMap<MatchReportRow>((teamNumber, station) => {
@@ -489,6 +492,35 @@ describe('tournaments module', () => {
     );
     expect(await filtered.json()).toEqual([]);
     expect((await app.request('/v2/tournaments/2026alpha/matches')).status).toBe(401);
+  });
+
+  it('returns code-authenticated mobile scouter assignments without dashboard auth', async () => {
+    const app = createApp(dependencies);
+    const response = await app.request('/v2/tournaments/public/2026alpha/scouter-schedule', {
+      headers: { 'x-team-code': 'team-8033' },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      hash: string;
+      data: { matchType: number; matchNumber: number; scouters: Record<string, unknown> }[];
+    };
+    expect(body.hash).toHaveLength(64);
+    expect(body.data).toEqual([
+      {
+        matchType: 0,
+        matchNumber: 1,
+        scouters: {
+          '00000000-0000-4000-8000-000000000011': { team: 8033, alliance: 'red' },
+        },
+      },
+    ]);
+    expect(
+      (
+        await app.request('/v2/tournaments/public/2026alpha/scouter-schedule', {
+          headers: { 'x-team-code': 'wrong' },
+        })
+      ).status
+    ).toBe(404);
   });
 });
 

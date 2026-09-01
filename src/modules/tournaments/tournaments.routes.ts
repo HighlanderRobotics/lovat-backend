@@ -17,6 +17,8 @@ import {
   MatchCatalogSchema,
   MatchCheckQuerySchema,
   MatchCheckResponseSchema,
+  PublicScouterScheduleSchema,
+  TeamCodeScheduleHeaderSchema,
 } from './tournaments.contracts';
 import type { TournamentsService } from './tournaments.service';
 
@@ -57,6 +59,19 @@ const listMatchesRoute = createRoute({
     401: { description: 'Authentication required', ...errorResponse },
     403: { description: 'A verified team is required', ...errorResponse },
     404: { description: 'Tournament not found', ...errorResponse },
+  },
+});
+const publicScouterScheduleRoute = createRoute({
+  method: 'get',
+  path: '/public/{key}/scouter-schedule',
+  request: { params: TournamentPathSchema, headers: TeamCodeScheduleHeaderSchema },
+  responses: {
+    200: {
+      description: 'Code-authenticated mobile scouter assignments',
+      content: { 'application/json': { schema: PublicScouterScheduleSchema } },
+    },
+    400: { description: 'Schedule match data is unavailable or inconsistent', ...errorResponse },
+    404: { description: 'Team code or tournament not found', ...errorResponse },
   },
 });
 
@@ -157,6 +172,15 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
   });
   router.openapi(checkMatchRoute, async (context) =>
     context.json(await dependencies.tournaments.checkMatch(context.req.valid('query')), 200)
+  );
+  router.openapi(publicScouterScheduleRoute, async (context) =>
+    context.json(
+      await dependencies.tournaments.getPublicScouterSchedule(
+        context.req.valid('header')['x-team-code'],
+        context.req.valid('param').key
+      ),
+      200
+    )
   );
   router.use('*', dashboardAuth(dependencies.authenticator));
 
