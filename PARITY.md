@@ -27,7 +27,8 @@ tests are present.
 - [x] Mutable picklist CRUD
 - [x] Shared/scored picklist CRUD with legacy metric defaults and team-wide access
 - [ ] Registered-team onboarding, verification, approval, and rejection
-- [ ] Team code and public scouter onboarding flows
+- [x] Public team-code validation and code-scoped active scouter roster
+- [ ] Code-authenticated public scouter schedules and tournament views
 - [ ] Team email and website management
 - [x] Verified-team user list, analyst list, and scouting-lead promotion
 
@@ -54,6 +55,11 @@ tests are present.
 - [ ] PostHog request analytics
 
 ## Final parity gate
+
+### Explicit retirements
+
+- Unauthenticated public scouter creation and UUID-only rename are retired. Their v1 authorization
+  model allowed arbitrary roster mutation; v2 roster writes require a verified-team scouting lead.
 
 - [ ] Every legacy route has a v2 replacement or an explicitly documented retirement
 - [ ] Production migration reviewed against the current database

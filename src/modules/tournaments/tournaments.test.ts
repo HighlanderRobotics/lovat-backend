@@ -245,6 +245,12 @@ describe('tournaments module', () => {
         },
       },
       scouters: {
+        async checkTeamCode() {
+          return { valid: false as const };
+        },
+        async listByTeamCode() {
+          return [];
+        },
         async list() {
           return [];
         },

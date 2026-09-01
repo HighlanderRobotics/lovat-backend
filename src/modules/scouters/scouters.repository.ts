@@ -17,6 +17,7 @@ export interface ScoutersRepository {
     uuid: string,
     changes: { name?: string; archived?: boolean }
   ): Promise<ScouterPublic | null>;
+  findTeamNumberByCode(code: string): Promise<number | null>;
 }
 
 const publicSelection = {
@@ -78,6 +79,14 @@ export function createScoutersRepository(database: Database): ScoutersRepository
         .where(eq(scouters.uuid, uuid))
         .returning(publicSelection);
       return scouter ?? null;
+    },
+    async findTeamNumberByCode(code) {
+      const [team] = await database
+        .select({ number: registeredTeams.number })
+        .from(registeredTeams)
+        .where(eq(registeredTeams.code, code))
+        .limit(1);
+      return team?.number ?? null;
     },
   };
 }

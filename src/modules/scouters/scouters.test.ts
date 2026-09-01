@@ -81,6 +81,9 @@ function createMemoryRepository() {
       records.set(uuid, updated);
       return toPublic(updated);
     },
+    async findTeamNumberByCode(code) {
+      return code === 'team-8033' ? 8033 : null;
+    },
   };
 
   function addScouter(teamNumber: number, name: string, archived = false) {
@@ -269,6 +272,29 @@ describe('scouters module', () => {
     expect(specification).toContain('ScouterListResponse');
     expect(specification).not.toContain('sourceTeamNumber');
     expect(specification).not.toContain('scouterReliability');
+  });
+
+  it('validates team codes and exposes only the code team active roster publicly', async () => {
+    memory.addScouter(8033, 'Active');
+    memory.addScouter(8033, 'Archived', true);
+    memory.addScouter(254, 'Other');
+    const app = createApp(dependencies);
+    const valid = await app.request('/v2/scouters/team-code?code=team-8033');
+    expect(valid.status).toBe(200);
+    expect(await valid.json()).toEqual({ valid: true, teamNumber: 8033 });
+    expect(await (await app.request('/v2/scouters/team-code?code=wrong')).json()).toEqual({
+      valid: false,
+    });
+    const roster = await app.request('/v2/scouters/public', {
+      headers: { 'x-team-code': 'team-8033' },
+    });
+    expect(roster.status).toBe(200);
+    expect(
+      ((await roster.json()) as { scouters: ScouterPublic[] }).scouters.map(({ name }) => name)
+    ).toEqual(['Active']);
+    expect(
+      (await app.request('/v2/scouters/public', { headers: { 'x-team-code': 'wrong' } })).status
+    ).toBe(404);
   });
 });
 

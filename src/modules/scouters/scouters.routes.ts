@@ -11,6 +11,9 @@ import {
   ScouterPathSchema,
   ScouterPublicSchema,
   ScouterUpdateBodySchema,
+  TeamCodeCheckResponseSchema,
+  TeamCodeHeaderSchema,
+  TeamCodeQuerySchema,
 } from './scouters.contracts';
 import type { ScoutersService } from './scouters.service';
 
@@ -29,6 +32,32 @@ const sharedErrors = {
   403: { description: 'A verified team and sufficient permission are required', ...errorResponse },
   404: { description: 'Account or scouter not found', ...errorResponse },
 } as const;
+
+const checkTeamCodeRoute = createRoute({
+  method: 'get',
+  path: '/team-code',
+  request: { query: TeamCodeQuerySchema },
+  responses: {
+    200: {
+      description: 'Whether the team code is registered',
+      content: { 'application/json': { schema: TeamCodeCheckResponseSchema } },
+    },
+    400: { description: 'Invalid code', ...errorResponse },
+  },
+});
+const publicRosterRoute = createRoute({
+  method: 'get',
+  path: '/public',
+  request: { headers: TeamCodeHeaderSchema },
+  responses: {
+    200: {
+      description: 'Active scouters for the team code',
+      content: { 'application/json': { schema: ScouterListResponseSchema } },
+    },
+    400: { description: 'Invalid code', ...errorResponse },
+    404: { description: 'Team code not found', ...errorResponse },
+  },
+});
 
 const listScoutersRoute = createRoute({
   method: 'get',
@@ -81,6 +110,19 @@ export function createScoutersRouter(dependencies: ScoutersRouteDependencies) {
       if (!result.success) throw new BadRequest();
     },
   });
+  router.openapi(checkTeamCodeRoute, async (context) =>
+    context.json(await dependencies.scouters.checkTeamCode(context.req.valid('query').code), 200)
+  );
+  router.openapi(publicRosterRoute, async (context) =>
+    context.json(
+      {
+        scouters: await dependencies.scouters.listByTeamCode(
+          context.req.valid('header')['x-team-code']
+        ),
+      },
+      200
+    )
+  );
   router.use('*', dashboardAuth(dependencies.authenticator));
 
   router.openapi(listScoutersRoute, async (context) => {

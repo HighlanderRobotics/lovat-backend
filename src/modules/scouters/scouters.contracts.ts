@@ -26,6 +26,15 @@ export const ScouterListResponseSchema = z
   .object({ scouters: z.array(ScouterPublicSchema) })
   .openapi('ScouterListResponse');
 
+export const TeamCodeQuerySchema = z.object({ code: z.string().min(1).max(200) });
+export const TeamCodeHeaderSchema = z.object({ 'x-team-code': z.string().min(1).max(200) });
+export const TeamCodeCheckResponseSchema = z
+  .union([
+    z.object({ valid: z.literal(false) }),
+    z.object({ valid: z.literal(true), teamNumber: z.number().int().positive() }),
+  ])
+  .openapi('TeamCodeCheck');
+
 export const ScouterCreateBodySchema = ScouterInsertSchema.pick({ name: true })
   .extend({ name: ScouterNameSchema })
   .openapi('ScouterCreateBody');

@@ -22,6 +22,17 @@ export function createScoutersService(repository: ScoutersRepository) {
   }
 
   return {
+    async checkTeamCode(code: string) {
+      const teamNumber = await repository.findTeamNumberByCode(code);
+      return teamNumber === null ? { valid: false as const } : { valid: true as const, teamNumber };
+    },
+
+    async listByTeamCode(code: string) {
+      const teamNumber = await repository.findTeamNumberByCode(code);
+      if (teamNumber === null) throw new NotFound('Team code not found');
+      return repository.list(teamNumber, false);
+    },
+
     async list(userId: string, archived?: boolean) {
       const account = await getAccount(userId);
       const teamNumber = requireVerifiedTeam(account);
