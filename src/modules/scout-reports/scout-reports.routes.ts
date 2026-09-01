@@ -11,6 +11,8 @@ import {
   ScoutReportPathSchema,
   ScoutReportResponseSchema,
   ScoutReportTimelineSchema,
+  MatchScoutReportsPathSchema,
+  MatchScoutReportsSchema,
 } from './scout-reports.contracts';
 import type { ScoutReportsService } from './scout-reports.service';
 
@@ -107,6 +109,19 @@ const timelineRoute = createRoute({
     ...errors,
   },
 });
+const matchReportsRoute = createRoute({
+  method: 'get',
+  path: '/match/{matchKey}',
+  security: [{ DashboardAuth: [] }],
+  request: { params: MatchScoutReportsPathSchema },
+  responses: {
+    200: {
+      description: 'Scout report summaries for a team match slot',
+      content: { 'application/json': { schema: MatchScoutReportsSchema } },
+    },
+    ...errors,
+  },
+});
 
 export function createScoutReportsRouter(dependencies: {
   scoutReports: ScoutReportsService;
@@ -154,6 +169,15 @@ export function createScoutReportsRouter(dependencies: {
   router.openapi(timelineRoute, async (c) =>
     c.json(
       await dependencies.scoutReports.timeline(c.get('auth').userId, c.req.valid('param').uuid),
+      200
+    )
+  );
+  router.openapi(matchReportsRoute, async (c) =>
+    c.json(
+      await dependencies.scoutReports.listForMatch(
+        c.get('auth').userId,
+        c.req.valid('param').matchKey
+      ),
       200
     )
   );

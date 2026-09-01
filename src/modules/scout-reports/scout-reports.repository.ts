@@ -3,6 +3,7 @@ import type { Database } from '../../platform/database/client';
 import {
   cachedAnalyses,
   events,
+  registeredTeams,
   scouters,
   scoutReports,
   teamMatchData,
@@ -11,12 +12,21 @@ import {
 
 export type ScoutReport = typeof scoutReports.$inferSelect;
 export type ScoutEvent = typeof events.$inferSelect;
-export type ScoutReportAccount = Pick<typeof users.$inferSelect, 'id' | 'teamNumber' | 'role'>;
+export type ScoutReportAccount = Pick<typeof users.$inferSelect, 'id' | 'teamNumber' | 'role'> & {
+  teamVerified: boolean;
+};
 export type ScoutReportRecord = ScoutReport & {
   scouterName: string | null;
   sourceTeamNumber: number;
   teamNumber: number;
   tournamentKey: string;
+};
+export type MatchScoutReportSummary = Pick<
+  ScoutReport,
+  'uuid' | 'scouterUuid' | 'notes' | 'startTime' | 'robotBrokeDescription'
+> & {
+  scouterName: string | null;
+  sourceTeamNumber: number;
 };
 
 export interface ScoutReportsRepository {
@@ -30,6 +40,7 @@ export interface ScoutReportsRepository {
   }): Promise<{ key: string; tournamentKey: string; teamNumber: number } | null>;
   findReport(uuid: string): Promise<ScoutReportRecord | null>;
   listEvents(uuid: string, ordered?: boolean): Promise<ScoutEvent[]>;
+  listForMatch(teamMatchKey: string): Promise<MatchScoutReportSummary[]>;
   create(
     report: typeof scoutReports.$inferInsert,
     eventRows: (typeof events.$inferInsert)[],
@@ -61,11 +72,17 @@ export function createScoutReportsRepository(database: Database): ScoutReportsRe
   return {
     async findAccount(userId) {
       const [row] = await database
-        .select({ id: users.id, teamNumber: users.teamNumber, role: users.role })
+        .select({
+          id: users.id,
+          teamNumber: users.teamNumber,
+          role: users.role,
+          teamVerified: registeredTeams.emailVerified,
+        })
         .from(users)
+        .leftJoin(registeredTeams, eq(users.teamNumber, registeredTeams.number))
         .where(eq(users.id, userId))
         .limit(1);
-      return row ?? null;
+      return row ? { ...row, teamVerified: row.teamVerified === true } : null;
     },
     async findScouter(uuid) {
       const [row] = await database
@@ -132,6 +149,22 @@ export function createScoutReportsRepository(database: Database): ScoutReportsRe
     listEvents(uuid, ordered = false) {
       const query = database.select().from(events).where(eq(events.scoutReportUuid, uuid));
       return ordered ? query.orderBy(asc(events.time)) : query;
+    },
+    listForMatch(teamMatchKey) {
+      return database
+        .select({
+          uuid: scoutReports.uuid,
+          scouterUuid: scoutReports.scouterUuid,
+          notes: scoutReports.notes,
+          startTime: scoutReports.startTime,
+          robotBrokeDescription: scoutReports.robotBrokeDescription,
+          scouterName: scouters.name,
+          sourceTeamNumber: scouters.sourceTeamNumber,
+        })
+        .from(scoutReports)
+        .innerJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
+        .where(eq(scoutReports.teamMatchKey, teamMatchKey))
+        .orderBy(asc(scoutReports.startTime), asc(scoutReports.uuid));
     },
     create(report, eventRows, dependency) {
       return database.transaction(async (transaction) => {

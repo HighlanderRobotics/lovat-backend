@@ -303,11 +303,18 @@ describe('scouters module', () => {
       error: { code: 'BAD_REQUEST', message: 'Invalid request' },
     });
 
-    const specification = JSON.stringify(await (await app.request('/v2/openapi.json')).json());
+    const document = (await (await app.request('/v2/openapi.json')).json()) as {
+      components: { schemas: Record<string, unknown> };
+    };
+    const specification = JSON.stringify(document);
+    const rosterSchemas = JSON.stringify({
+      list: document.components.schemas.ScouterListResponse,
+      summary: document.components.schemas.ScouterSummary,
+    });
     expect(specification).toContain('/v2/scouters/{uuid}');
     expect(specification).toContain('ScouterListResponse');
-    expect(specification).not.toContain('sourceTeamNumber');
-    expect(specification).not.toContain('scouterReliability');
+    expect(rosterSchemas).not.toContain('sourceTeamNumber');
+    expect(rosterSchemas).not.toContain('scouterReliability');
   });
 
   it('validates team codes and exposes only the code team active roster publicly', async () => {
@@ -352,6 +359,9 @@ const unusedMutablePicklists = {
   },
 };
 const unusedScoutReports = {
+  async listForMatch() {
+    return [];
+  },
   async createPublic() {
     throw new Error('Not used by this test');
   },

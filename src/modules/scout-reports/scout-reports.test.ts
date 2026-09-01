@@ -10,9 +10,10 @@ import type {
 import { createScoutReportsService } from './scout-reports.service';
 
 const accounts = new Map<string, ScoutReportAccount>([
-  ['analyst', { id: 'analyst', teamNumber: 8033, role: 'ANALYST' }],
-  ['lead', { id: 'lead', teamNumber: 8033, role: 'SCOUTING_LEAD' }],
-  ['other', { id: 'other', teamNumber: 254, role: 'SCOUTING_LEAD' }],
+  ['analyst', { id: 'analyst', teamNumber: 8033, role: 'ANALYST', teamVerified: true }],
+  ['lead', { id: 'lead', teamNumber: 8033, role: 'SCOUTING_LEAD', teamVerified: true }],
+  ['other', { id: 'other', teamNumber: 254, role: 'SCOUTING_LEAD', teamVerified: true }],
+  ['unverified', { id: 'unverified', teamNumber: 254, role: 'ANALYST', teamVerified: false }],
 ]);
 
 function createMemoryRepository() {
@@ -45,6 +46,19 @@ function createMemoryRepository() {
     async listEvents(uuid, ordered) {
       const rows = [...(eventRows.get(uuid) ?? [])];
       return ordered ? rows.sort((a, b) => a.time - b.time) : rows;
+    },
+    async listForMatch(teamMatchKey) {
+      return [...reports.values()]
+        .filter((report) => report.teamMatchKey === teamMatchKey)
+        .map((report) => ({
+          uuid: report.uuid,
+          scouterUuid: report.scouterUuid,
+          notes: report.notes,
+          startTime: report.startTime,
+          robotBrokeDescription: report.robotBrokeDescription,
+          scouterName: report.scouterName,
+          sourceTeamNumber: report.sourceTeamNumber,
+        }));
     },
     async create(report, events) {
       if (reports.has(report.uuid!)) throw Object.assign(new Error('duplicate'), { code: '23505' });
@@ -230,5 +244,27 @@ describe('scout reports module', () => {
     expect(await response.json()).toEqual({ uuid: baseInput.uuid });
     expect(memory.reports.has(baseInput.uuid)).toBe(true);
     expect(memory.eventRows.get(baseInput.uuid)).toHaveLength(3);
+  });
+
+  it('lists match reports with team-scoped names and modification flags', async () => {
+    const service = createScoutReportsService(memory.repository);
+    await service.create('analyst', {
+      ...baseInput,
+      robotRoles: [...baseInput.robotRoles],
+      feederTypes: [...baseInput.feederTypes],
+    });
+    const own = await service.listForMatch('lead', '2026test_qm1_8033');
+    expect(own[0]).toMatchObject({
+      scouter: { name: 'Scout', sourceTeamNumber: 8033 },
+      canModify: true,
+    });
+    const outside = await service.listForMatch('other', '2026test_qm1_8033');
+    expect(outside[0]).toMatchObject({
+      scouter: { name: 'Scouter from 8033', sourceTeamNumber: 8033 },
+      canModify: false,
+    });
+    await expect(service.listForMatch('unverified', '2026test_qm1_8033')).rejects.toThrow(
+      'verified team'
+    );
   });
 });

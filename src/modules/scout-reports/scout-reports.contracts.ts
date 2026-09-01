@@ -64,3 +64,18 @@ export const ScoutReportTimelineSchema = z
     ])
   )
   .openapi('ScoutReportTimeline');
+export const MatchScoutReportsPathSchema = z.object({
+  matchKey: z.string().trim().min(1).max(100),
+});
+export const MatchScoutReportSummarySchema = z.object({
+  uuid: z.uuid(),
+  scouterUuid: z.uuid(),
+  notes: z.string(),
+  startTime: z.iso.datetime(),
+  robotBrokeDescription: z.string().nullable(),
+  scouter: z.object({ name: z.string().nullable(), sourceTeamNumber: z.number().int().positive() }),
+  canModify: z.boolean(),
+});
+export const MatchScoutReportsSchema = z
+  .array(MatchScoutReportSummarySchema)
+  .openapi('MatchScoutReports');

@@ -364,6 +364,9 @@ const unusedMutablePicklists = {
   },
 };
 const unusedScoutReports = {
+  async listForMatch() {
+    return [];
+  },
   async createPublic() {
     throw new Error('Not used by this test');
   },

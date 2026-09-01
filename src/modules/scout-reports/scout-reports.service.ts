@@ -225,6 +225,24 @@ export function createScoutReportsService(repository: ScoutReportsRepository) {
         }
       );
     },
+    async listForMatch(userId: string, matchKey: string) {
+      const user = await account(userId);
+      if (user.teamNumber === null || !user.teamVerified)
+        throw new Forbidden('A verified team is required');
+      return (await repository.listForMatch(matchKey)).map(
+        ({ scouterName, sourceTeamNumber, ...report }) => ({
+          ...report,
+          scouter: {
+            sourceTeamNumber,
+            name:
+              user.teamNumber === sourceTeamNumber
+                ? scouterName
+                : `Scouter from ${sourceTeamNumber}`,
+          },
+          canModify: user.role === 'SCOUTING_LEAD' && user.teamNumber === sourceTeamNumber,
+        })
+      );
+    },
   };
 }
 export type ScoutReportsService = ReturnType<typeof createScoutReportsService>;
