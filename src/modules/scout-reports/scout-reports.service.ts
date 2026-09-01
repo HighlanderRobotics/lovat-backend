@@ -117,56 +117,65 @@ export function createScoutReportsService(repository: ScoutReportsRepository) {
       throw new Forbidden('Only the report team’s scouting lead can modify this report');
     return row;
   }
+  async function persist(input: CreateInput) {
+    const [scouter, match] = await Promise.all([
+      repository.findScouter(input.scouterUuid),
+      repository.findMatch(input),
+    ]);
+    if (!scouter) throw new BadRequest('This scouter has been deleted or never existed');
+    if (!match) throw new NotFound('Match does not exist');
+    const eventRows = normalizeEvents(input).map((event) => ({
+      ...event,
+      scoutReportUuid: input.uuid,
+    }));
+    try {
+      await repository.create(
+        {
+          uuid: input.uuid,
+          teamMatchKey: match.key,
+          startTime: new Date(input.startTime),
+          notes: input.notes,
+          robotRoles: input.robotRoles,
+          driverAbility: input.driverAbility,
+          scouterUuid: input.scouterUuid,
+          robotBrokeDescription: input.robotBrokeDescription ?? null,
+          accuracy: input.accuracy ?? null,
+          beached: input.beached,
+          climbPosition: input.climbPosition ?? null,
+          climbSide: input.climbSide ?? null,
+          defenseEffectiveness: input.defenseEffectiveness,
+          feederTypes: input.feederTypes,
+          intakeType: input.intakeType,
+          fieldTraversal: input.mobility,
+          scoresWhileMoving: input.scoresWhileMoving,
+          disrupts: input.disrupts,
+          endgameClimb: input.endgameClimb,
+          autoClimb: input.autoClimb,
+        },
+        eventRows,
+        match
+      );
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505')
+        throw new BadRequest('Scout report already uploaded');
+      throw error;
+    }
+    return { uuid: input.uuid, scouter };
+  }
   return {
+    async createPublic(input: CreateInput) {
+      await persist(input);
+      return { uuid: input.uuid };
+    },
     async create(userId: string, input: CreateInput) {
-      const [user, scouter, match] = await Promise.all([
+      const [user, scouter] = await Promise.all([
         account(userId),
         repository.findScouter(input.scouterUuid),
-        repository.findMatch(input),
       ]);
       if (!scouter) throw new BadRequest('This scouter has been deleted or never existed');
       if (user.teamNumber === null || user.teamNumber !== scouter.sourceTeamNumber)
         throw new Forbidden('Not on the same team as the scouter');
-      if (!match) throw new NotFound('Match does not exist');
-      const normalized = normalizeEvents(input);
-      const eventRows = normalized.map((event) => ({ ...event, scoutReportUuid: input.uuid }));
-      try {
-        await repository.create(
-          {
-            uuid: input.uuid,
-            teamMatchKey: match.key,
-            startTime: new Date(input.startTime),
-            notes: input.notes,
-            robotRoles: input.robotRoles,
-            driverAbility: input.driverAbility,
-            scouterUuid: input.scouterUuid,
-            robotBrokeDescription: input.robotBrokeDescription ?? null,
-            accuracy: input.accuracy ?? null,
-            beached: input.beached,
-            climbPosition: input.climbPosition ?? null,
-            climbSide: input.climbSide ?? null,
-            defenseEffectiveness: input.defenseEffectiveness,
-            feederTypes: input.feederTypes,
-            intakeType: input.intakeType,
-            fieldTraversal: input.mobility,
-            scoresWhileMoving: input.scoresWhileMoving,
-            disrupts: input.disrupts,
-            endgameClimb: input.endgameClimb,
-            autoClimb: input.autoClimb,
-          },
-          eventRows,
-          match
-        );
-      } catch (error) {
-        if (
-          typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          error.code === '23505'
-        )
-          throw new BadRequest('Scout report already uploaded');
-        throw error;
-      }
+      await persist(input);
       return this.get(userId, input.uuid);
     },
     async get(userId: string, uuid: string) {

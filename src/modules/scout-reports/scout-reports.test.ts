@@ -210,4 +210,25 @@ describe('scout reports module', () => {
     expect(document).toContain('/{uuid}/timeline');
     expect(document).toContain('ScoutReportCreate');
   });
+
+  it('accepts the legacy mobile report upload without dashboard authentication', async () => {
+    const service = createScoutReportsService(memory.repository);
+    const router = createScoutReportsRouter({
+      scoutReports: service,
+      authenticator: {
+        async authenticate() {
+          return null;
+        },
+      },
+    });
+    const response = await router.request('/public', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(baseInput),
+    });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ uuid: baseInput.uuid });
+    expect(memory.reports.has(baseInput.uuid)).toBe(true);
+    expect(memory.eventRows.get(baseInput.uuid)).toHaveLength(3);
+  });
 });

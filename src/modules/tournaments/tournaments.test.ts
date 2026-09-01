@@ -569,6 +569,9 @@ const unusedMutablePicklists = {
   },
 };
 const unusedScoutReports = {
+  async createPublic() {
+    throw new Error('Not used by this test');
+  },
   async create() {
     throw new Error('Not used by this test');
   },

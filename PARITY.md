@@ -20,7 +20,8 @@ tests are present.
 - [x] Scouter-schedule create/update/delete
 - [ ] Automatic scouter-schedule generation
 - [x] Authenticated scout-report create/read/delete, legacy event timelines, and notes updates
-- [ ] Public team-code scout-report upload, on-demand match import, and break warnings
+- [x] Legacy mobile scout-report upload with numeric event compatibility
+- [ ] On-demand match import and Slack break warnings during scout-report upload
 - [x] Database-backed match catalog, public match existence, source-aware report counts, and
       schedule progress
 - [ ] Match results, team tournament status, and on-demand TBA match refresh

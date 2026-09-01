@@ -38,6 +38,7 @@ export const ScoutReportCreateSchema = z
     events: z.array(LegacyEventTupleSchema),
   })
   .openapi('ScoutReportCreate');
+export const ScoutReportCreatedSchema = z.object({ uuid: z.uuid() }).openapi('ScoutReportCreated');
 
 export const ScoutReportPublicSchema = ScoutReportSchema.extend({
   scouterName: z.string().nullable().optional(),

@@ -6,6 +6,7 @@ import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest, handleErrors } from '../../platform/http/errors';
 import {
   ScoutReportCreateSchema,
+  ScoutReportCreatedSchema,
   ScoutReportNotesSchema,
   ScoutReportPathSchema,
   ScoutReportResponseSchema,
@@ -42,6 +43,19 @@ const getRoute = createRoute({
       content: { 'application/json': { schema: ScoutReportResponseSchema } },
     },
     ...errors,
+  },
+});
+const createPublicReportRoute = createRoute({
+  method: 'post',
+  path: '/public',
+  request: { body: { content: { 'application/json': { schema: ScoutReportCreateSchema } } } },
+  responses: {
+    201: {
+      description: 'Mobile scout report uploaded',
+      content: { 'application/json': { schema: ScoutReportCreatedSchema } },
+    },
+    400: errors[400],
+    404: errors[404],
   },
 });
 const createReportRoute = createRoute({
@@ -104,6 +118,9 @@ export function createScoutReportsRouter(dependencies: {
     },
   });
   router.onError(handleErrors);
+  router.openapi(createPublicReportRoute, async (c) =>
+    c.json(await dependencies.scoutReports.createPublic(c.req.valid('json')), 201)
+  );
   router.use('*', dashboardAuth(dependencies.authenticator));
   router.openapi(getRoute, async (c) =>
     c.json(
