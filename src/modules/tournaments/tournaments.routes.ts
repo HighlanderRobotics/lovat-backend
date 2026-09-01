@@ -9,6 +9,7 @@ import {
   TournamentListResponseSchema,
   TournamentPathSchema,
   TournamentTeamsResponseSchema,
+  ScouterScheduleResponseSchema,
 } from './tournaments.contracts';
 import type { TournamentsService } from './tournaments.service';
 
@@ -53,6 +54,23 @@ const listTournamentTeamsRoute = createRoute({
   },
 });
 
+const getScouterScheduleRoute = createRoute({
+  method: 'get',
+  path: '/{key}/scouter-shifts',
+  security: [{ DashboardAuth: [] }],
+  request: { params: TournamentPathSchema },
+  responses: {
+    200: {
+      description: 'The authenticated team scouter schedule',
+      content: { 'application/json': { schema: ScouterScheduleResponseSchema } },
+    },
+    400: { description: 'Invalid tournament key', ...errorResponse },
+    401: { description: 'Authentication required', ...errorResponse },
+    403: { description: 'A verified team is required', ...errorResponse },
+    404: { description: 'Tournament not found', ...errorResponse },
+  },
+});
+
 export function createTournamentsRouter(dependencies: TournamentsRouteDependencies) {
   const router = new OpenAPIHono<AppEnvironment>({
     defaultHook(result) {
@@ -71,6 +89,15 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
     const { key } = context.req.valid('param');
     const teams = await dependencies.tournaments.listTeams(key);
     return context.json({ teams }, 200);
+  });
+
+  router.openapi(getScouterScheduleRoute, async (context) => {
+    const { key } = context.req.valid('param');
+    const schedule = await dependencies.tournaments.getScouterSchedule(
+      context.get('auth').userId,
+      key
+    );
+    return context.json(schedule, 200);
   });
 
   return router;

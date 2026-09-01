@@ -32,6 +32,7 @@ The health endpoint is available at `GET /v2/health`.
 - `GET /v2/api-keys` and `POST /v2/api-keys`
 - `PATCH /v2/api-keys/{uuid}` and `DELETE /v2/api-keys/{uuid}`
 - `GET /v2/tournaments` and `GET /v2/tournaments/{key}/teams`
+- `GET /v2/tournaments/{key}/scouter-shifts`
 - `GET /v2/teams`
 - `GET /v2/scouters`, `POST /v2/scouters`, and `PATCH /v2/scouters/{uuid}`
 - `GET /v2/openapi.json`

@@ -64,6 +64,9 @@ describe('accounts module', () => {
         async listTeams() {
           return [];
         },
+        async getScouterSchedule() {
+          return { hash: '', data: [] };
+        },
       },
       teams: {
         async list() {

@@ -27,3 +27,22 @@ export const TournamentPathSchema = TournamentSchema.pick({ key: true })
 export const TournamentTeamsResponseSchema = z
   .object({ teams: z.array(TeamSchema) })
   .openapi('TournamentTeamsResponse');
+
+const AssignedScouterSchema = z.object({ uuid: z.uuid(), name: z.string().nullable() });
+export const ScouterShiftSchema = z
+  .object({
+    uuid: z.uuid(),
+    startMatchOrdinalNumber: z.number().int().positive(),
+    endMatchOrdinalNumber: z.number().int().positive(),
+    team1: z.array(AssignedScouterSchema),
+    team2: z.array(AssignedScouterSchema),
+    team3: z.array(AssignedScouterSchema),
+    team4: z.array(AssignedScouterSchema),
+    team5: z.array(AssignedScouterSchema),
+    team6: z.array(AssignedScouterSchema),
+  })
+  .openapi('ScouterShift');
+
+export const ScouterScheduleResponseSchema = z
+  .object({ hash: z.string(), data: z.array(ScouterShiftSchema) })
+  .openapi('ScouterScheduleResponse');

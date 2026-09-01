@@ -76,6 +76,9 @@ describe('teams module', () => {
         async listTeams() {
           return [];
         },
+        async getScouterSchedule() {
+          return { hash: '', data: [] };
+        },
       },
       scouters: {
         async list() {

@@ -77,6 +77,24 @@ function createMemoryRepository(): TournamentsRepository {
     async listTeams(key) {
       return [...(tournamentTeams.get(key) ?? [])].sort((a, b) => a.number - b.number);
     },
+    async findVerifiedUserTeamNumber(userId) {
+      return userId === 'unverified' ? null : 8033;
+    },
+    async listScouterShifts() {
+      return [
+        {
+          uuid: '00000000-0000-4000-8000-000000000010',
+          startMatchOrdinalNumber: 1,
+          endMatchOrdinalNumber: 5,
+          team1: [{ uuid: '00000000-0000-4000-8000-000000000011', name: 'Scout One' }],
+          team2: [],
+          team3: [],
+          team4: [],
+          team5: [],
+          team6: [],
+        },
+      ];
+    },
   };
 }
 
@@ -199,5 +217,22 @@ describe('tournaments module', () => {
     const specification = JSON.stringify(await (await app.request('/v2/openapi.json')).json());
     expect(specification).toContain('/v2/tournaments');
     expect(specification).toContain('/v2/tournaments/{key}/teams');
+    expect(specification).toContain('/v2/tournaments/{key}/scouter-shifts');
+  });
+
+  it('returns the verified team schedule with a deterministic content hash', async () => {
+    const app = createApp(dependencies);
+    const first = await app.request('/v2/tournaments/2026alpha/scouter-shifts', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    const second = await app.request('/v2/tournaments/2026alpha/scouter-shifts', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    const firstBody = (await first.json()) as { hash: string; data: unknown[] };
+    const secondBody = (await second.json()) as { hash: string; data: unknown[] };
+    expect(first.status).toBe(200);
+    expect(firstBody.hash).toHaveLength(64);
+    expect(secondBody.hash).toBe(firstBody.hash);
+    expect(firstBody.data).toHaveLength(1);
   });
 });
