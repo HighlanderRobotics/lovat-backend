@@ -39,3 +39,17 @@ export const AccountSettingsUpdateSchema = UserUpdateSchema.pick({
     { message: 'At least one setting is required' }
   )
   .openapi('AccountSettingsUpdate');
+
+export const TeamMemberSchema = UserSchema.pick({
+  id: true,
+  teamNumber: true,
+  username: true,
+  email: true,
+  role: true,
+}).openapi('TeamMember');
+export const TeamMemberListSchema = z
+  .object({ members: z.array(TeamMemberSchema) })
+  .openapi('TeamMemberList');
+export const PromoteScoutingLeadSchema = z
+  .object({ userId: z.string().min(1) })
+  .openapi('PromoteScoutingLead');

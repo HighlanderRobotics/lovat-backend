@@ -54,6 +54,15 @@ describe('teams module', () => {
         async updateSettings() {
           throw new Error('Not used by this test');
         },
+        async listTeamMembers() {
+          return [];
+        },
+        async listAnalysts() {
+          return [];
+        },
+        async promoteToScoutingLead() {
+          throw new Error('Not used by this test');
+        },
       },
       apiKeys: {
         async list() {

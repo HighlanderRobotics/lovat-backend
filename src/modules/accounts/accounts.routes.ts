@@ -9,6 +9,9 @@ import {
   AccountResponseSchema,
   AccountSettingsSchema,
   AccountSettingsUpdateSchema,
+  PromoteScoutingLeadSchema,
+  TeamMemberListSchema,
+  TeamMemberSchema,
 } from './accounts.contracts';
 import type { AccountsService } from './accounts.service';
 
@@ -16,6 +19,16 @@ type AccountsRouteDependencies = {
   accounts: AccountsService;
   authenticator: Authenticator;
 };
+
+function teamMember(account: Awaited<ReturnType<AccountsService['getRequired']>>) {
+  return {
+    id: account.id,
+    teamNumber: account.teamNumber,
+    username: account.username,
+    email: account.email,
+    role: account.role,
+  };
+}
 
 const getCurrentAccountRoute = createRoute({
   method: 'get',
@@ -105,6 +118,62 @@ const updateAccountSettingsRoute = createRoute({
   },
 });
 
+const teamErrors = {
+  401: {
+    description: 'Authentication required',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  403: {
+    description: 'Verified team or scouting lead required',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+  404: {
+    description: 'Account not found',
+    content: { 'application/json': { schema: ErrorResponseSchema } },
+  },
+} as const;
+const listTeamMembersRoute = createRoute({
+  method: 'get',
+  path: '/team/members',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    200: {
+      description: 'Verified team members',
+      content: { 'application/json': { schema: TeamMemberListSchema } },
+    },
+    ...teamErrors,
+  },
+});
+const listAnalystsRoute = createRoute({
+  method: 'get',
+  path: '/team/analysts',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    200: {
+      description: 'Analysts eligible for promotion',
+      content: { 'application/json': { schema: TeamMemberListSchema } },
+    },
+    ...teamErrors,
+  },
+});
+const promoteScoutingLeadRoute = createRoute({
+  method: 'post',
+  path: '/team/scouting-leads',
+  security: [{ DashboardAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: PromoteScoutingLeadSchema } } } },
+  responses: {
+    200: {
+      description: 'Promoted scouting lead',
+      content: { 'application/json': { schema: TeamMemberSchema } },
+    },
+    400: {
+      description: 'Invalid request',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    ...teamErrors,
+  },
+});
+
 export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
   const router = new OpenAPIHono<AppEnvironment>({
     defaultHook(result) {
@@ -161,6 +230,34 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
       },
       200
     );
+  });
+
+  router.openapi(listTeamMembersRoute, async (context) =>
+    context.json(
+      {
+        members: (await dependencies.accounts.listTeamMembers(context.get('auth').userId)).map(
+          teamMember
+        ),
+      },
+      200
+    )
+  );
+  router.openapi(listAnalystsRoute, async (context) =>
+    context.json(
+      {
+        members: (await dependencies.accounts.listAnalysts(context.get('auth').userId)).map(
+          teamMember
+        ),
+      },
+      200
+    )
+  );
+  router.openapi(promoteScoutingLeadRoute, async (context) => {
+    const account = await dependencies.accounts.promoteToScoutingLead(
+      context.get('auth').userId,
+      context.req.valid('json').userId
+    );
+    return context.json(teamMember(account), 200);
   });
 
   return router;

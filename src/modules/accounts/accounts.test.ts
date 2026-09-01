@@ -17,14 +17,22 @@ const originalAccount: Account = {
 
 describe('accounts module', () => {
   let storedAccount: Account | null;
+  let teammateAccount: Account;
   let dependencies: AppDependencies;
 
   beforeEach(() => {
     storedAccount = { ...originalAccount };
+    teammateAccount = {
+      ...originalAccount,
+      id: 'auth0|user-2',
+      email: 'teammate@example.com',
+      username: 'teammate',
+    };
 
     const repository: AccountsRepository = {
       async findById(id) {
-        return storedAccount?.id === id ? storedAccount : null;
+        if (storedAccount?.id === id) return storedAccount;
+        return teammateAccount.id === id ? teammateAccount : null;
       },
       async upsertFromAuth0() {
         throw new Error('Not used by this test');
@@ -38,6 +46,28 @@ describe('accounts module', () => {
         if (storedAccount?.id !== id) return null;
         storedAccount = { ...storedAccount, ...settings };
         return storedAccount;
+      },
+      async isTeamVerified(teamNumber) {
+        return teamNumber === 8033;
+      },
+      async listTeamMembers(teamNumber, role) {
+        return [storedAccount, teammateAccount].filter(
+          (account): account is Account =>
+            account !== null &&
+            account.teamNumber === teamNumber &&
+            (!role || account.role === role)
+        );
+      },
+      async updateRole(id, role) {
+        if (storedAccount?.id === id) {
+          storedAccount = { ...storedAccount, role };
+          return storedAccount;
+        }
+        if (teammateAccount.id === id) {
+          teammateAccount = { ...teammateAccount, role };
+          return teammateAccount;
+        }
+        return null;
       },
     };
 
@@ -179,6 +209,44 @@ describe('accounts module', () => {
       body: JSON.stringify({}),
     });
     expect(response.status).toBe(400);
+  });
+
+  it('lists verified team members without account settings', async () => {
+    const response = await createApp(dependencies).request('/v2/accounts/team/members', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { members: Record<string, unknown>[] };
+    expect(body.members.map(({ id }) => id)).toEqual([originalAccount.id, teammateAccount.id]);
+    expect(body.members[0]).not.toHaveProperty('teamSourceRule');
+    expect(body.members[0]).not.toHaveProperty('emailVerified');
+  });
+
+  it('allows a scouting lead to list analysts and promote a teammate', async () => {
+    storedAccount = { ...storedAccount!, role: 'SCOUTING_LEAD' };
+    const app = createApp(dependencies);
+    const analysts = await app.request('/v2/accounts/team/analysts', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(analysts.status).toBe(200);
+    expect(
+      ((await analysts.json()) as { members: { id: string }[] }).members.map(({ id }) => id)
+    ).toEqual([teammateAccount.id]);
+    const promoted = await app.request('/v2/accounts/team/scouting-leads', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ userId: teammateAccount.id }),
+    });
+    expect(promoted.status).toBe(200);
+    expect(((await promoted.json()) as { role: string }).role).toBe('SCOUTING_LEAD');
+    expect(teammateAccount.role).toBe('SCOUTING_LEAD');
+  });
+
+  it('prevents analysts from listing promotion candidates', async () => {
+    const response = await createApp(dependencies).request('/v2/accounts/team/analysts', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(response.status).toBe(403);
   });
 });
 

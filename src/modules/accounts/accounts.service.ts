@@ -1,7 +1,16 @@
-import { NotFound } from '../../platform/http/errors';
+import { Forbidden, NotFound } from '../../platform/http/errors';
 import type { Account, AccountsRepository } from './accounts.repository';
 
 export function createAccountsService(repository: AccountsRepository) {
+  async function teamAccount(id: string, lead = false) {
+    const account = await repository.findById(id);
+    if (!account) throw new NotFound('Account not found');
+    if (account.teamNumber === null || !(await repository.isTeamVerified(account.teamNumber)))
+      throw new Forbidden('A verified team is required');
+    if (lead && account.role !== 'SCOUTING_LEAD')
+      throw new Forbidden('Only scouting leads can perform this action');
+    return account;
+  }
   return {
     async getRequired(id: string) {
       const account = await repository.findById(id);
@@ -35,6 +44,25 @@ export function createAccountsService(repository: AccountsRepository) {
       });
       if (!account) throw new NotFound('Account not found');
       return account;
+    },
+    async listTeamMembers(id: string) {
+      const account = await teamAccount(id);
+      return repository.listTeamMembers(account.teamNumber!);
+    },
+    async listAnalysts(id: string) {
+      const account = await teamAccount(id, true);
+      return repository.listTeamMembers(account.teamNumber!, 'ANALYST');
+    },
+    async promoteToScoutingLead(id: string, upgradedUserId: string) {
+      const account = await teamAccount(id, true);
+      const target = await repository.findById(upgradedUserId);
+      if (!target) throw new NotFound('Account to promote not found');
+      if (target.teamNumber !== account.teamNumber)
+        throw new Forbidden('Account to promote belongs to another team');
+      if (target.id === account.id || target.role === 'SCOUTING_LEAD') return target;
+      const updated = await repository.updateRole(target.id, 'SCOUTING_LEAD');
+      if (!updated) throw new NotFound('Account to promote not found');
+      return updated;
     },
   };
 }

@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Database } from '../../platform/database/client';
-import { users } from '../../platform/database/schema';
+import { registeredTeams, users } from '../../platform/database/schema';
 
 export type Account = typeof users.$inferSelect;
 export type AccountRole = Account['role'];
@@ -19,6 +19,9 @@ export interface AccountsRepository {
     id: string,
     settings: Pick<Account, 'username' | 'teamSourceRule' | 'tournamentSourceRule'>
   ): Promise<Account | null>;
+  isTeamVerified(teamNumber: number): Promise<boolean>;
+  listTeamMembers(teamNumber: number, role?: AccountRole): Promise<Account[]>;
+  updateRole(id: string, role: AccountRole): Promise<Account | null>;
 }
 
 export function createAccountsRepository(database: Database): AccountsRepository {
@@ -61,6 +64,29 @@ export function createAccountsRepository(database: Database): AccountsRepository
       const [account] = await database
         .update(users)
         .set(settings)
+        .where(eq(users.id, id))
+        .returning();
+      return account ?? null;
+    },
+    async isTeamVerified(teamNumber) {
+      const [team] = await database
+        .select({ verified: registeredTeams.emailVerified })
+        .from(registeredTeams)
+        .where(eq(registeredTeams.number, teamNumber))
+        .limit(1);
+      return team?.verified === true;
+    },
+    listTeamMembers(teamNumber, role) {
+      return database
+        .select()
+        .from(users)
+        .where(and(eq(users.teamNumber, teamNumber), role ? eq(users.role, role) : undefined))
+        .orderBy(asc(users.username), asc(users.email));
+    },
+    async updateRole(id, role) {
+      const [account] = await database
+        .update(users)
+        .set({ role })
         .where(eq(users.id, id))
         .returning();
       return account ?? null;

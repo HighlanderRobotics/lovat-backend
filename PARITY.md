@@ -29,7 +29,7 @@ tests are present.
 - [ ] Registered-team onboarding, verification, approval, and rejection
 - [ ] Team code and public scouter onboarding flows
 - [ ] Team email and website management
-- [ ] Team user list, analyst list, and scouting-lead promotion
+- [x] Verified-team user list, analyst list, and scouting-lead promotion
 
 ## Remaining analysis work
 
