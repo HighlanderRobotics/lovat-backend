@@ -144,6 +144,81 @@ function createMemoryRepository(): TournamentsRepository {
       return 'old-etag';
     },
     async upsertImportedMatches() {},
+    async listMatchResultStations(matchKey) {
+      if (matchKey !== '2026alpha_qm1') return [];
+      return [8033, 254, 1678, 4414, 5940, 971].map((teamNumber, station) => ({
+        key: `${matchKey}_${station}`,
+        tournamentKey: '2026alpha',
+        matchNumber: 1,
+        matchType: 'QUALIFICATION' as const,
+        teamNumber,
+        scoutReports:
+          station === 0
+            ? [
+                {
+                  uuid: '00000000-0000-4000-8000-000000000099',
+                  teamMatchKey: `${matchKey}_${station}`,
+                  startTime: new Date('2026-03-01T00:00:00Z'),
+                  notes: '',
+                  robotRoles: ['SCORING' as const, 'DEFENDING' as const],
+                  driverAbility: 4,
+                  scouterUuid: '00000000-0000-4000-8000-000000000011',
+                  robotBrokeDescription: null,
+                  accuracy: 4,
+                  beached: 'NEITHER' as const,
+                  climbPosition: null,
+                  climbSide: null,
+                  defenseEffectiveness: 3,
+                  feederTypes: [],
+                  intakeType: 'GROUND' as const,
+                  fieldTraversal: 'BOTH' as const,
+                  scoresWhileMoving: true,
+                  disrupts: false,
+                  endgameClimb: 'L1' as const,
+                  autoClimb: 'SUCCEEDED' as const,
+                  events: [
+                    {
+                      eventUuid: 'event-1',
+                      scoutReportUuid: '00000000-0000-4000-8000-000000000099',
+                      time: 10,
+                      action: 'STOP_SCORING' as const,
+                      position: 'HUB' as const,
+                      points: 5,
+                      quantity: 8,
+                    },
+                    {
+                      eventUuid: 'event-2',
+                      scoutReportUuid: '00000000-0000-4000-8000-000000000099',
+                      time: 30,
+                      action: 'START_DEFENDING' as const,
+                      position: 'HUB' as const,
+                      points: 0,
+                      quantity: null,
+                    },
+                    {
+                      eventUuid: 'event-3',
+                      scoutReportUuid: '00000000-0000-4000-8000-000000000099',
+                      time: 45,
+                      action: 'STOP_DEFENDING' as const,
+                      position: 'HUB' as const,
+                      points: 0,
+                      quantity: null,
+                    },
+                    {
+                      eventUuid: 'event-4',
+                      scoutReportUuid: '00000000-0000-4000-8000-000000000099',
+                      time: 60,
+                      action: 'STOP_FEEDING' as const,
+                      position: 'HUB' as const,
+                      points: 7,
+                      quantity: 4,
+                    },
+                  ],
+                },
+              ]
+            : [],
+      }));
+    },
     async listMatchReportRows(key) {
       if (key !== '2026alpha') return [];
       return [8033, 254, 1678, 4414, 5940, 971].flatMap<MatchReportRow>((teamNumber, station) => {
@@ -371,6 +446,28 @@ describe('tournaments module', () => {
       rankingPoints: 27,
       matchesPlayed: 9,
       matchesTotal: 12,
+    });
+  });
+
+  it('returns six-team match-result aggregates for verified teams', async () => {
+    const response = await createApp(dependencies).request(
+      '/v2/tournaments/matches/results?matchKey=2026alpha_qm1',
+      { headers: { authorization: 'Bearer valid-token' } }
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      red: { teams: { teamNumber: number; pointsScored: number; role: number[] }[] };
+      blue: { teams: { teamNumber: number }[] };
+    };
+    expect(body.red.teams.map(({ teamNumber }) => teamNumber)).toEqual([8033, 254, 1678]);
+    expect(body.blue.teams.map(({ teamNumber }) => teamNumber)).toEqual([4414, 5940, 971]);
+    expect(body.red.teams[0]).toMatchObject({ pointsScored: 22, role: [0, 1, 0, 1, 0, 0] });
+    expect(body.red).toMatchObject({
+      totalPoints: 22,
+      autoPoints: 15,
+      teleopPoints: 7,
+      totalDefenseTime: 15,
+      totalFuelOutputted: 12,
     });
   });
 

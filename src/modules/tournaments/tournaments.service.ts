@@ -2,6 +2,7 @@ import { BadRequest, Forbidden, NotFound } from '../../platform/http/errors';
 import { createHash } from 'node:crypto';
 import type {
   MatchReportRow,
+  MatchResultStation,
   ShiftWrite,
   TournamentListOptions,
   TournamentsRepository,
@@ -129,6 +130,76 @@ function groupMatchRows(
 
 type ListOptions = Pick<TournamentListOptions, 'filter' | 'limit' | 'offset'>;
 
+const endgamePoints = { NOT_ATTEMPTED: 0, FAILED: 0, L1: 10, L2: 20, L3: 30 } as const;
+const roles = ['CYCLING', 'SCORING', 'FEEDING', 'DEFENDING', 'IMMOBILE'] as const;
+
+function pairedDuration(
+  events: MatchResultStation['scoutReports'][number]['events'],
+  start: string,
+  stop: string
+) {
+  const relevant = events
+    .filter(({ action }) => action === start || action === stop)
+    .sort((left, right) => left.time - right.time);
+  let total = 0;
+  for (let index = 0; index < relevant.length; index += 2) {
+    if (relevant[index]?.action === start && relevant[index + 1]?.action === stop)
+      total += relevant[index + 1].time - relevant[index].time;
+  }
+  return total;
+}
+
+function reportMetrics(report: MatchResultStation['scoutReports'][number]) {
+  const eventPoints = report.events.reduce((total, event) => total + event.points, 0);
+  return {
+    totalPoints: endgamePoints[report.endgameClimb] + eventPoints,
+    autoPoints:
+      report.events
+        .filter(({ time }) => time <= 23)
+        .reduce((total, event) => total + event.points, 0) +
+      (report.autoClimb === 'SUCCEEDED' ? 10 : 0),
+    teleopPoints: report.events
+      .filter(({ time }) => time > 23)
+      .reduce((total, event) => total + event.points, 0),
+    totalDefenseTime:
+      pairedDuration(report.events, 'START_DEFENDING', 'STOP_DEFENDING') +
+      pairedDuration(report.events, 'START_CAMPING', 'STOP_CAMPING'),
+    totalFuelOutputted: report.events
+      .filter(({ action }) => action === 'STOP_FEEDING' || action === 'STOP_SCORING')
+      .reduce((total, event) => total + (event.quantity ?? 0), 0),
+  };
+}
+
+function allianceResults(stations: MatchResultStation[]) {
+  const totals = {
+    totalPoints: 0,
+    totalDefenseTime: 0,
+    totalFuelOutputted: 0,
+    autoPoints: 0,
+    teleopPoints: 0,
+  };
+  const teams = stations.map((station) => {
+    const metrics = station.scoutReports.map(reportMetrics);
+    for (const metric of Object.keys(totals) as (keyof typeof totals)[])
+      totals[metric] +=
+        metrics.reduce((sum, result) => sum + result[metric], 0) / (metrics.length || 1);
+    const role = [...roles.map(() => 0), 0];
+    for (const report of station.scoutReports)
+      for (const reportRole of report.robotRoles) {
+        const index = roles.indexOf(reportRole);
+        if (index >= 0) role[index] += 1;
+      }
+    return {
+      teamNumber: station.teamNumber,
+      pointsScored:
+        metrics.reduce((sum, result) => sum + result.totalPoints, 0) / (metrics.length || 1),
+      reports: station.scoutReports.map(({ events: _events, ...report }) => report),
+      role,
+    };
+  });
+  return { teams, ...totals };
+}
+
 export function createTournamentsService(repository: TournamentsRepository, tba?: TbaClient) {
   async function refreshMatches(key: string) {
     if (!tba) return;
@@ -237,6 +308,16 @@ export function createTournamentsService(repository: TournamentsRepository, tba?
       if (!tba) throw new Error('The Blue Alliance client is not configured');
       const status = await tba.getTeamEventStatus(key, teamNumber);
       return { ...entry, ...status };
+    },
+
+    async getMatchResults(userId: string, matchKey: string) {
+      await scheduleAccount(userId);
+      const stations = await repository.listMatchResultStations(matchKey);
+      if (stations.length !== 6) throw new NotFound('Match not found or incomplete');
+      return {
+        red: allianceResults(stations.slice(0, 3)),
+        blue: allianceResults(stations.slice(3, 6)),
+      };
     },
 
     async getPublicScouterSchedule(code: string, key: string) {

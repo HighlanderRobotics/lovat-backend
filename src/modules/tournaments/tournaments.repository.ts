@@ -16,6 +16,7 @@ import {
   teams,
   tournaments,
   users,
+  events,
 } from '../../platform/database/schema';
 
 export type Tournament = typeof tournaments.$inferSelect;
@@ -60,6 +61,11 @@ export type TeamTournamentEntry = {
   number: number;
   name: string;
   matchesTotal: number;
+};
+export type MatchResultStation = typeof teamMatchData.$inferSelect & {
+  scoutReports: (typeof scoutReports.$inferSelect & {
+    events: (typeof events.$inferSelect)[];
+  })[];
 };
 
 export type TournamentListOptions = {
@@ -110,6 +116,7 @@ export interface TournamentsRepository {
     etag: string | null,
     importedMatches: ImportedTeamMatch[]
   ): Promise<void>;
+  listMatchResultStations(matchKey: string): Promise<MatchResultStation[]>;
 }
 
 export function createTournamentsRepository(database: Database): TournamentsRepository {
@@ -350,6 +357,17 @@ export function createTournamentsRepository(database: Database): TournamentsRepo
           .set({ latestFetchETag: etag })
           .where(eq(tournaments.key, tournamentKey));
       });
+    },
+    async listMatchResultStations(matchKey) {
+      const rows = await database.query.teamMatchData.findMany({
+        where: (row, { inArray }) =>
+          inArray(
+            row.key,
+            Array.from({ length: 6 }, (_, station) => `${matchKey}_${station}`)
+          ),
+        with: { scoutReports: { with: { events: true } } },
+      });
+      return rows.sort((left, right) => left.key.localeCompare(right.key));
     },
     async findShift(uuid) {
       const [row] = await database

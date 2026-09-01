@@ -1,5 +1,10 @@
 import { z } from '@hono/zod-openapi';
-import { TeamMatchDataSchema, TeamSchema, TournamentSchema } from '../../platform/database/schemas';
+import {
+  ScoutReportSchema,
+  TeamMatchDataSchema,
+  TeamSchema,
+  TournamentSchema,
+} from '../../platform/database/schemas';
 
 export const TournamentSummarySchema = TournamentSchema.extend({
   isParticipant: z.boolean(),
@@ -67,6 +72,24 @@ export const TeamTournamentStatusSchema = z
     matchesTotal: z.number().int().nonnegative(),
   })
   .openapi('TeamTournamentStatus');
+export const MatchResultsQuerySchema = z.object({ matchKey: z.string().trim().min(1).max(100) });
+const MatchResultTeamSchema = z.object({
+  teamNumber: z.number().int().positive(),
+  pointsScored: z.number(),
+  reports: z.array(ScoutReportSchema),
+  role: z.array(z.number().int().nonnegative()).length(6),
+});
+const AllianceResultsSchema = z.object({
+  teams: z.array(MatchResultTeamSchema).length(3),
+  totalPoints: z.number(),
+  totalDefenseTime: z.number(),
+  totalFuelOutputted: z.number(),
+  autoPoints: z.number(),
+  teleopPoints: z.number(),
+});
+export const MatchResultsSchema = z
+  .object({ red: AllianceResultsSchema, blue: AllianceResultsSchema })
+  .openapi('MatchResults');
 
 export const TeamCodeScheduleHeaderSchema = z.object({
   'x-team-code': z.string().min(1).max(200),
