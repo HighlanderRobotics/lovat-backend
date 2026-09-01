@@ -7,6 +7,7 @@ import { createTournamentsRouter } from '../modules/tournaments';
 import { createTeamsRouter } from '../modules/teams';
 import { createScoutersRouter } from '../modules/scouters';
 import { createMutablePicklistsRouter } from '../modules/mutable-picklists';
+import { createScoutReportsRouter } from '../modules/scout-reports';
 import { handleErrors } from '../platform/http/errors';
 import { requestId } from '../platform/http/request-id';
 
@@ -29,6 +30,14 @@ export function createApp(dependencies: AppDependencies) {
     '/v2/mutable-picklists',
     createMutablePicklistsRouter({
       mutablePicklists: dependencies.mutablePicklists,
+      authenticator: dependencies.authenticator,
+    })
+  );
+
+  app.route(
+    '/v2/scout-reports',
+    createScoutReportsRouter({
+      scoutReports: dependencies.scoutReports,
       authenticator: dependencies.authenticator,
     })
   );

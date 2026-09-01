@@ -174,6 +174,7 @@ describe('api keys module', () => {
         },
       },
       mutablePicklists: unusedMutablePicklists,
+      scoutReports: unusedScoutReports,
       authenticator: {
         async authenticate(token) {
           const owner = [analyst, teammate, lead, outsider, unverified].find(
@@ -274,5 +275,22 @@ const unusedMutablePicklists = {
   },
   async delete() {
     throw new Error('Not used by this test');
+  },
+};
+const unusedScoutReports = {
+  async create() {
+    throw new Error('Not used by this test');
+  },
+  async get() {
+    throw new Error('Not used by this test');
+  },
+  async updateNotes() {
+    throw new Error('Not used by this test');
+  },
+  async delete() {
+    throw new Error('Not used by this test');
+  },
+  async timeline() {
+    return [];
   },
 };

@@ -17,6 +17,8 @@ import type { TournamentsService } from '../modules/tournaments';
 import type { TeamsService } from '../modules/teams';
 import type { ScoutersService } from '../modules/scouters';
 import type { MutablePicklistsService } from '../modules/mutable-picklists';
+import { createScoutReportsRepository, createScoutReportsService } from '../modules/scout-reports';
+import type { ScoutReportsService } from '../modules/scout-reports';
 
 export type AppDependencies = {
   accounts: AccountsService;
@@ -25,6 +27,7 @@ export type AppDependencies = {
   teams: TeamsService;
   scouters: ScoutersService;
   mutablePicklists: MutablePicklistsService;
+  scoutReports: ScoutReportsService;
   authenticator: Authenticator;
   apiVersion: string;
 };
@@ -38,6 +41,7 @@ export function createProductionDependencies(): AppDependencies {
   const teamsRepository = createTeamsRepository(database);
   const scoutersRepository = createScoutersRepository(database);
   const mutablePicklistsRepository = createMutablePicklistsRepository(database);
+  const scoutReportsRepository = createScoutReportsRepository(database);
 
   return {
     accounts: createAccountsService(accountsRepository),
@@ -46,6 +50,7 @@ export function createProductionDependencies(): AppDependencies {
     teams: createTeamsService(teamsRepository),
     scouters: createScoutersService(scoutersRepository),
     mutablePicklists: createMutablePicklistsService(mutablePicklistsRepository),
+    scoutReports: createScoutReportsService(scoutReportsRepository),
     authenticator: createAuth0Authenticator(
       environment.AUTH0_DOMAIN,
       environment.AUTH0_AUDIENCE,

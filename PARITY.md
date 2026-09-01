@@ -19,7 +19,8 @@ tests are present.
 
 - [x] Scouter-schedule create/update/delete
 - [ ] Automatic scouter-schedule generation
-- [ ] Scout-report create/read/delete, event timelines, and notes updates
+- [x] Authenticated scout-report create/read/delete, legacy event timelines, and notes updates
+- [ ] Public team-code scout-report upload, on-demand match import, and break warnings
 - [ ] Match catalog, match existence, results, and team tournament status
 - [x] Mutable picklist CRUD
 - [ ] Shared/scored picklist CRUD
@@ -42,7 +43,8 @@ tests are present.
 ## Remaining integrations and operations
 
 - [ ] The Blue Alliance tournament, team, match, ranking, and result imports
-- [ ] Cache invalidation and cached-analysis behavior
+- [ ] Cached-analysis calculation/storage and external cache invalidation (report mutations already
+      invalidate PostgreSQL cache metadata)
 - [ ] Slack OAuth, commands, events, subscriptions, and warnings
 - [ ] Email verification delivery and resend throttling
 - [ ] Scheduled imports, cleanup jobs, and deployment-time jobs

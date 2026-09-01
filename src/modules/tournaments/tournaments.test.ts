@@ -189,6 +189,7 @@ describe('tournaments module', () => {
         },
       },
       mutablePicklists: unusedMutablePicklists,
+      scoutReports: unusedScoutReports,
       authenticator: {
         async authenticate(token) {
           if (token === 'valid-token')
@@ -379,5 +380,22 @@ const unusedMutablePicklists = {
   },
   async delete() {
     throw new Error('Not used by this test');
+  },
+};
+const unusedScoutReports = {
+  async create() {
+    throw new Error('Not used by this test');
+  },
+  async get() {
+    throw new Error('Not used by this test');
+  },
+  async updateNotes() {
+    throw new Error('Not used by this test');
+  },
+  async delete() {
+    throw new Error('Not used by this test');
+  },
+  async timeline() {
+    return [];
   },
 };

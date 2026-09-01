@@ -162,6 +162,7 @@ describe('scouters module', () => {
         },
       },
       mutablePicklists: unusedMutablePicklists,
+      scoutReports: unusedScoutReports,
       authenticator: {
         async authenticate(token) {
           const account = [analyst, lead, otherLead, unverified].find(({ id }) => id === token);
@@ -270,5 +271,22 @@ const unusedMutablePicklists = {
   },
   async delete() {
     throw new Error('Not used by this test');
+  },
+};
+const unusedScoutReports = {
+  async create() {
+    throw new Error('Not used by this test');
+  },
+  async get() {
+    throw new Error('Not used by this test');
+  },
+  async updateNotes() {
+    throw new Error('Not used by this test');
+  },
+  async delete() {
+    throw new Error('Not used by this test');
+  },
+  async timeline() {
+    return [];
   },
 };
