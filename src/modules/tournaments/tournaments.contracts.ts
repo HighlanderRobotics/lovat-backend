@@ -73,6 +73,9 @@ export const PublicScouterScheduleSchema = z
     ),
   })
   .openapi('PublicScouterSchedule');
+export const PublicScheduledTournamentsSchema = z
+  .object({ tournaments: z.array(TournamentSchema) })
+  .openapi('PublicScheduledTournaments');
 
 export const TournamentTeamsResponseSchema = z
   .object({ teams: z.array(TeamSchema) })

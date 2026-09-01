@@ -133,6 +133,9 @@ function createMemoryRepository(): TournamentsRepository {
     async findTeamNumberByCode(code) {
       return code === 'team-8033' ? 8033 : null;
     },
+    async listScheduledTournaments(teamNumber) {
+      return teamNumber === 8033 ? [tournamentRows[0]] : [];
+    },
     async listMatchReportRows(key) {
       if (key !== '2026alpha') return [];
       return [8033, 254, 1678, 4414, 5940, 971].flatMap<MatchReportRow>((teamNumber, station) => {
@@ -521,6 +524,30 @@ describe('tournaments module', () => {
         })
       ).status
     ).toBe(404);
+  });
+
+  it('provides code-authenticated tournament discovery and scheduled-event views', async () => {
+    const app = createApp(dependencies);
+    const catalog = await app.request('/v2/tournaments/public?limit=2', {
+      headers: { 'x-team-code': 'team-8033' },
+    });
+    expect(catalog.status).toBe(200);
+    const body = (await catalog.json()) as {
+      tournaments: { key: string; isParticipant: boolean }[];
+      count: number;
+    };
+    expect(body.count).toBe(3);
+    expect(body.tournaments[0]).toMatchObject({ key: '2026alpha', isParticipant: true });
+
+    const scheduled = await app.request('/v2/tournaments/public/scheduled', {
+      headers: { 'x-team-code': 'team-8033' },
+    });
+    expect(scheduled.status).toBe(200);
+    expect(
+      ((await scheduled.json()) as { tournaments: { key: string }[] }).tournaments.map(
+        ({ key }) => key
+      )
+    ).toEqual(['2026alpha']);
   });
 });
 

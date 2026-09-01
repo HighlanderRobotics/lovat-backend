@@ -93,6 +93,7 @@ export interface TournamentsRepository {
   }): Promise<typeof teamMatchData.$inferSelect | null>;
   listMatchReportRows(tournamentKey: string): Promise<MatchReportRow[]>;
   findTeamNumberByCode(code: string): Promise<number | null>;
+  listScheduledTournaments(teamNumber: number): Promise<Tournament[]>;
 }
 
 export function createTournamentsRepository(database: Database): TournamentsRepository {
@@ -269,6 +270,20 @@ export function createTournamentsRepository(database: Database): TournamentsRepo
         .where(eq(registeredTeams.code, code))
         .limit(1);
       return team?.number ?? null;
+    },
+    listScheduledTournaments(teamNumber) {
+      return database
+        .selectDistinct({
+          key: tournaments.key,
+          name: tournaments.name,
+          location: tournaments.location,
+          date: tournaments.date,
+          latestFetchETag: tournaments.latestFetchETag,
+        })
+        .from(tournaments)
+        .innerJoin(scouterScheduleShifts, eq(scouterScheduleShifts.tournamentKey, tournaments.key))
+        .where(eq(scouterScheduleShifts.sourceTeamNumber, teamNumber))
+        .orderBy(asc(tournaments.date), asc(tournaments.key));
     },
     async findShift(uuid) {
       const [row] = await database

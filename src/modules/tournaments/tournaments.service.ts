@@ -275,6 +275,18 @@ export function createTournamentsService(repository: TournamentsRepository) {
       };
     },
 
+    async listPublicTournaments(code: string, options: ListOptions) {
+      const teamNumber = await repository.findTeamNumberByCode(code);
+      if (teamNumber === null) throw new NotFound('Team code not found');
+      return repository.list({ ...options, teamNumber });
+    },
+
+    async listPublicScheduledTournaments(code: string) {
+      const teamNumber = await repository.findTeamNumberByCode(code);
+      if (teamNumber === null) throw new NotFound('Team code not found');
+      return { tournaments: await repository.listScheduledTournaments(teamNumber) };
+    },
+
     async getScouterSchedule(userId: string, key: string) {
       if (!(await repository.exists(key))) throw new NotFound('Tournament not found');
       const teamNumber = await repository.findVerifiedUserTeamNumber(userId);

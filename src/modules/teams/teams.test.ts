@@ -94,6 +94,12 @@ describe('teams module', () => {
         async getPublicScouterSchedule() {
           throw new Error('Not used by this test');
         },
+        async listPublicTournaments() {
+          return { tournaments: [], count: 0 };
+        },
+        async listPublicScheduledTournaments() {
+          return { tournaments: [] };
+        },
         async getScouterSchedule() {
           return { hash: '', data: [] };
         },

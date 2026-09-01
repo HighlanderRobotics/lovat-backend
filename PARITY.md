@@ -29,7 +29,7 @@ tests are present.
 - [ ] Registered-team onboarding, verification, approval, and rejection
 - [x] Public team-code validation and code-scoped active scouter roster
 - [x] Code-authenticated public scouter schedules with match/team/alliance assignments
-- [ ] Code-authenticated public scouter tournament views
+- [x] Code-authenticated public tournament catalog and scheduled-event views
 - [ ] Team email and website management
 - [x] Verified-team user list, analyst list, and scouting-lead promotion
 

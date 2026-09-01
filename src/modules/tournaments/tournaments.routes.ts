@@ -19,6 +19,7 @@ import {
   MatchCheckResponseSchema,
   PublicScouterScheduleSchema,
   TeamCodeScheduleHeaderSchema,
+  PublicScheduledTournamentsSchema,
 } from './tournaments.contracts';
 import type { TournamentsService } from './tournaments.service';
 
@@ -72,6 +73,32 @@ const publicScouterScheduleRoute = createRoute({
     },
     400: { description: 'Schedule match data is unavailable or inconsistent', ...errorResponse },
     404: { description: 'Team code or tournament not found', ...errorResponse },
+  },
+});
+const publicTournamentsRoute = createRoute({
+  method: 'get',
+  path: '/public',
+  request: { headers: TeamCodeScheduleHeaderSchema, query: TournamentListQuerySchema },
+  responses: {
+    200: {
+      description: 'Code-authenticated tournament catalog',
+      content: { 'application/json': { schema: TournamentListResponseSchema } },
+    },
+    400: { description: 'Invalid query', ...errorResponse },
+    404: { description: 'Team code not found', ...errorResponse },
+  },
+});
+const publicScheduledTournamentsRoute = createRoute({
+  method: 'get',
+  path: '/public/scheduled',
+  request: { headers: TeamCodeScheduleHeaderSchema },
+  responses: {
+    200: {
+      description: 'Tournaments with a schedule for the code team',
+      content: { 'application/json': { schema: PublicScheduledTournamentsSchema } },
+    },
+    400: { description: 'Invalid code', ...errorResponse },
+    404: { description: 'Team code not found', ...errorResponse },
   },
 });
 
@@ -178,6 +205,23 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
       await dependencies.tournaments.getPublicScouterSchedule(
         context.req.valid('header')['x-team-code'],
         context.req.valid('param').key
+      ),
+      200
+    )
+  );
+  router.openapi(publicTournamentsRoute, async (context) =>
+    context.json(
+      await dependencies.tournaments.listPublicTournaments(
+        context.req.valid('header')['x-team-code'],
+        context.req.valid('query')
+      ),
+      200
+    )
+  );
+  router.openapi(publicScheduledTournamentsRoute, async (context) =>
+    context.json(
+      await dependencies.tournaments.listPublicScheduledTournaments(
+        context.req.valid('header')['x-team-code']
       ),
       200
     )
