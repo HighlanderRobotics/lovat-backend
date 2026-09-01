@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, gte, ilike, inArray, lte, ne, or, sql } from 'drizzle-orm';
 import type { Database } from '../../platform/database/client';
+import type { ImportedTeamMatch } from '../../integrations/tba/tba-client';
 import {
   registeredTeams,
   scoutReports,
@@ -103,6 +104,12 @@ export interface TournamentsRepository {
     tournamentKey: string,
     teamNumber: number
   ): Promise<TeamTournamentEntry | null>;
+  getLatestFetchETag(tournamentKey: string): Promise<string | null>;
+  upsertImportedMatches(
+    tournamentKey: string,
+    etag: string | null,
+    importedMatches: ImportedTeamMatch[]
+  ): Promise<void>;
 }
 
 export function createTournamentsRepository(database: Database): TournamentsRepository {
@@ -313,6 +320,36 @@ export function createTournamentsRepository(database: Database): TournamentsRepo
         .groupBy(teams.number, teams.name)
         .limit(1);
       return row ?? null;
+    },
+    async getLatestFetchETag(tournamentKey) {
+      const [row] = await database
+        .select({ etag: tournaments.latestFetchETag })
+        .from(tournaments)
+        .where(eq(tournaments.key, tournamentKey))
+        .limit(1);
+      return row?.etag ?? null;
+    },
+    async upsertImportedMatches(tournamentKey, etag, importedMatches) {
+      await database.transaction(async (tx) => {
+        if (importedMatches.length) {
+          await tx
+            .insert(teamMatchData)
+            .values(importedMatches)
+            .onConflictDoUpdate({
+              target: teamMatchData.key,
+              set: {
+                tournamentKey: sql`excluded."tournamentKey"`,
+                matchNumber: sql`excluded."matchNumber"`,
+                teamNumber: sql`excluded."teamNumber"`,
+                matchType: sql`excluded."matchType"`,
+              },
+            });
+        }
+        await tx
+          .update(tournaments)
+          .set({ latestFetchETag: etag })
+          .where(eq(tournaments.key, tournamentKey));
+      });
     },
     async findShift(uuid) {
       const [row] = await database

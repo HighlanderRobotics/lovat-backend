@@ -20,14 +20,72 @@ export type TeamEventStatus = {
   rankingPoints: number | null;
 };
 
+export type ImportedTeamMatch = {
+  key: string;
+  tournamentKey: string;
+  matchNumber: number;
+  teamNumber: number;
+  matchType: 'QUALIFICATION' | 'ELIMINATION';
+};
+
+export type EventMatchRefresh =
+  | { notModified: true }
+  | { notModified: false; etag: string | null; matches: ImportedTeamMatch[] };
+
 export interface TbaClient {
   getTeamEventStatus(eventKey: string, teamNumber: number): Promise<TeamEventStatus>;
+  getEventMatches(eventKey: string, etag: string | null): Promise<EventMatchRefresh>;
 }
 
 type TbaFetch = (
   input: string,
   init?: { headers?: Record<string, string> }
-) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
+) => Promise<{
+  ok: boolean;
+  status: number;
+  headers?: { get(name: string): string | null };
+  json(): Promise<unknown>;
+}>;
+
+const EventSchema = z.object({
+  playoff_type: z.number().int().nullable().optional(),
+  remap_teams: z.record(z.string(), z.string()).nullable().optional(),
+});
+const EventMatchSchema = z.object({
+  key: z.string(),
+  comp_level: z.string(),
+  match_number: z.number().int().positive(),
+  alliances: z.object({
+    red: z.object({ team_keys: z.array(z.string()) }),
+    blue: z.object({ team_keys: z.array(z.string()) }),
+  }),
+});
+const playoffOrder = {
+  10: [
+    'sf1m1',
+    'sf2m1',
+    'sf3m1',
+    'sf4m1',
+    'sf5m1',
+    'sf6m1',
+    'sf7m1',
+    'sf8m1',
+    'sf9m1',
+    'sf10m1',
+    'sf11m1',
+    'sf12m1',
+    'sf13m1',
+    'f1m1',
+    'f1m2',
+  ],
+  11: ['sf1m1', 'sf2m1', 'sf3m1', 'sf4m1', 'sf5m1', 'f1m1', 'f1m2'],
+} as const;
+
+function teamNumber(teamKey: string, remaps: Record<string, string>) {
+  const realKey = Object.entries(remaps).find(([, fake]) => fake === teamKey)?.[0] ?? teamKey;
+  const value = Number(realKey.replace(/^frc/, ''));
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
 
 export function createTbaClient(
   authKey: string | undefined,
@@ -51,6 +109,59 @@ export function createTbaClient(
           ranking.sort_orders[0] === undefined
             ? null
             : Math.round(ranking.sort_orders[0] * ranking.matches_played),
+      };
+    },
+    async getEventMatches(eventKey, etag) {
+      if (!authKey) throw new Error('TBA_KEY is not configured');
+      const base = 'https://www.thebluealliance.com/api/v3';
+      const headers = { 'X-TBA-Auth-Key': authKey };
+      const [eventResponse, matchesResponse] = await Promise.all([
+        fetcher(`${base}/event/${encodeURIComponent(eventKey)}`, { headers }),
+        fetcher(`${base}/event/${encodeURIComponent(eventKey)}/matches`, {
+          headers: etag ? { ...headers, 'If-None-Match': etag } : headers,
+        }),
+      ]);
+      if (!eventResponse.ok)
+        throw new Error(`The Blue Alliance event request failed (${eventResponse.status})`);
+      if (matchesResponse.status === 304) return { notModified: true };
+      if (!matchesResponse.ok)
+        throw new Error(`The Blue Alliance matches request failed (${matchesResponse.status})`);
+      const event = EventSchema.parse(await eventResponse.json());
+      const sourceMatches = z.array(EventMatchSchema).parse(await matchesResponse.json());
+      const remaps = event.remap_teams ?? {};
+      const matches: ImportedTeamMatch[] = [];
+      for (const match of sourceMatches) {
+        const keys = [...match.alliances.red.team_keys, ...match.alliances.blue.team_keys];
+        if (keys.length !== 6) continue;
+        const teams = keys.map((key) => teamNumber(key, remaps));
+        if (teams.some((number) => number === null)) continue;
+        let matchType: ImportedTeamMatch['matchType'];
+        let matchNumber: number;
+        if (match.comp_level === 'qm') {
+          matchType = 'QUALIFICATION';
+          matchNumber = match.match_number;
+        } else {
+          const order: readonly string[] | undefined = playoffOrder[event.playoff_type as 10 | 11];
+          const suffix = match.key.split('_')[1] ?? '';
+          const index = order?.indexOf(suffix) ?? -1;
+          if (index < 0) continue;
+          matchType = 'ELIMINATION';
+          matchNumber = index + 1;
+        }
+        teams.forEach((number, station) =>
+          matches.push({
+            key: `${eventKey}_${matchType === 'QUALIFICATION' ? 'qm' : 'em'}${matchNumber}_${station}`,
+            tournamentKey: eventKey,
+            matchNumber,
+            teamNumber: number!,
+            matchType,
+          })
+        );
+      }
+      return {
+        notModified: false,
+        etag: matchesResponse.headers?.get('etag') ?? null,
+        matches,
       };
     },
   };

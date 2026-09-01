@@ -30,4 +30,67 @@ describe('The Blue Alliance client', () => {
       rankingPoints: null,
     });
   });
+
+  it('maps remapped qualification and double-elimination teams into legacy station rows', async () => {
+    const client = createTbaClient('secret', async (input, init) => {
+      if (input.endsWith('/matches')) {
+        expect(init?.headers?.['If-None-Match']).toBe('old-etag');
+        return globalThis.Response.json(
+          [
+            {
+              key: '2026alpha_qm3',
+              comp_level: 'qm',
+              match_number: 3,
+              alliances: {
+                red: { team_keys: ['frc8033B', 'frc254', 'frc1678'] },
+                blue: { team_keys: ['frc4414', 'frc5940', 'frc971'] },
+              },
+            },
+            {
+              key: '2026alpha_sf2m1',
+              comp_level: 'sf',
+              match_number: 1,
+              alliances: {
+                red: { team_keys: ['frc8033', 'frc254', 'frc1678'] },
+                blue: { team_keys: ['frc4414', 'frc5940', 'frc971'] },
+              },
+            },
+          ],
+          { headers: { etag: 'new-etag' } }
+        );
+      }
+      return globalThis.Response.json({
+        playoff_type: 10,
+        remap_teams: { frc8033: 'frc8033B' },
+      });
+    });
+
+    const result = await client.getEventMatches('2026alpha', 'old-etag');
+    expect(result.notModified).toBe(false);
+    if (result.notModified) throw new Error('Expected imported matches');
+    expect(result.etag).toBe('new-etag');
+    expect(result.matches).toHaveLength(12);
+    expect(result.matches[0]).toEqual({
+      key: '2026alpha_qm3_0',
+      tournamentKey: '2026alpha',
+      matchNumber: 3,
+      teamNumber: 8033,
+      matchType: 'QUALIFICATION',
+    });
+    expect(result.matches[7]).toMatchObject({
+      key: '2026alpha_em2_1',
+      matchNumber: 2,
+      teamNumber: 254,
+      matchType: 'ELIMINATION',
+    });
+  });
+
+  it('short-circuits a conditional match request on 304', async () => {
+    const client = createTbaClient('secret', async (input) =>
+      input.endsWith('/matches')
+        ? new globalThis.Response(null, { status: 304 })
+        : globalThis.Response.json({ playoff_type: 10, remap_teams: null })
+    );
+    expect(await client.getEventMatches('2026alpha', 'same')).toEqual({ notModified: true });
+  });
 });

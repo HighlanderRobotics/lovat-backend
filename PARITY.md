@@ -25,7 +25,8 @@ tests are present.
 - [x] Database-backed match catalog, public match existence, source-aware report counts, and
       schedule progress
 - [x] Team tournament qualification status backed by The Blue Alliance
-- [ ] Match results and on-demand TBA match refresh
+- [ ] Match results
+- [x] ETag-aware on-demand TBA qualification and playoff match refresh
 - [x] Mutable picklist CRUD
 - [x] Shared/scored picklist CRUD with legacy metric defaults and team-wide access
 - [x] Registered-team request, join-by-code, and registration status lifecycle

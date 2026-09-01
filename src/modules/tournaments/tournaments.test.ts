@@ -140,6 +140,10 @@ function createMemoryRepository(): TournamentsRepository {
       const team = tournamentTeams.get(key)?.find(({ number }) => number === teamNumber);
       return team ? { ...team, matchesTotal: 12 } : null;
     },
+    async getLatestFetchETag() {
+      return 'old-etag';
+    },
+    async upsertImportedMatches() {},
     async listMatchReportRows(key) {
       if (key !== '2026alpha') return [];
       return [8033, 254, 1678, 4414, 5940, 971].flatMap<MatchReportRow>((teamNumber, station) => {
@@ -218,6 +222,9 @@ describe('tournaments module', () => {
         async getTeamEventStatus(key, teamNumber) {
           if (key !== '2026alpha' || teamNumber !== 8033) throw new Error('Unexpected TBA request');
           return { rank: 4, rankingPoints: 27, matchesPlayed: 9 };
+        },
+        async getEventMatches() {
+          return { notModified: true };
         },
       }),
       accounts: {

@@ -130,6 +130,17 @@ function groupMatchRows(
 type ListOptions = Pick<TournamentListOptions, 'filter' | 'limit' | 'offset'>;
 
 export function createTournamentsService(repository: TournamentsRepository, tba?: TbaClient) {
+  async function refreshMatches(key: string) {
+    if (!tba) return;
+    try {
+      const result = await tba.getEventMatches(key, await repository.getLatestFetchETag(key));
+      if (!result.notModified)
+        await repository.upsertImportedMatches(key, result.etag, result.matches);
+    } catch (error) {
+      // Match reads remain available from the last successful import when TBA is unavailable.
+      console.error('Unable to refresh tournament matches', error);
+    }
+  }
   async function scheduleAccount(userId: string, requireLead = false) {
     const account = await repository.findScheduleAccount(userId);
     if (!account || account.teamNumber === null || account.emailVerified !== true)
@@ -186,6 +197,9 @@ export function createTournamentsService(repository: TournamentsRepository, tba?
       matchNumber: number;
       isElim: boolean;
     }) {
+      if (!(await repository.exists(input.tournamentKey)))
+        throw new NotFound('Tournament not found');
+      await refreshMatches(input.tournamentKey);
       const match = await repository.findTeamMatch({
         ...input,
         matchType: input.isElim ? 'ELIMINATION' : 'QUALIFICATION',
@@ -199,6 +213,7 @@ export function createTournamentsService(repository: TournamentsRepository, tba?
 
     async listMatches(userId: string, key: string, teams?: string) {
       if (!(await repository.exists(key))) throw new NotFound('Tournament not found');
+      await refreshMatches(key);
       const account = await repository.findScheduleAccount(userId);
       if (!account || account.teamNumber === null || account.emailVerified !== true)
         throw new Forbidden('A verified team is required');
