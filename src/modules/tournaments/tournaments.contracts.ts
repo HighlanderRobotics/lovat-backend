@@ -54,6 +54,19 @@ export const MatchCatalogSchema = z.array(MatchCatalogItemSchema).openapi('Tourn
 export const MatchCheckResponseSchema = z
   .object({ match: TeamMatchDataSchema, alliance: z.enum(['red', 'blue']) })
   .openapi('MatchCheckResponse');
+export const TeamTournamentStatusQuerySchema = z.object({
+  teamNumber: z.coerce.number().int().positive(),
+});
+export const TeamTournamentStatusSchema = z
+  .object({
+    number: z.number().int().positive(),
+    name: z.string(),
+    rank: z.number().int().positive().nullable(),
+    rankingPoints: z.number().int().nullable(),
+    matchesPlayed: z.number().int().nonnegative().nullable(),
+    matchesTotal: z.number().int().nonnegative(),
+  })
+  .openapi('TeamTournamentStatus');
 
 export const TeamCodeScheduleHeaderSchema = z.object({
   'x-team-code': z.string().min(1).max(200),

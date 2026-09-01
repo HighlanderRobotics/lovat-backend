@@ -55,6 +55,11 @@ export type MatchReportRow = {
   reportScouterName: string | null;
   reportSourceTeamNumber: number | null;
 };
+export type TeamTournamentEntry = {
+  number: number;
+  name: string;
+  matchesTotal: number;
+};
 
 export type TournamentListOptions = {
   filter?: string;
@@ -94,6 +99,10 @@ export interface TournamentsRepository {
   listMatchReportRows(tournamentKey: string): Promise<MatchReportRow[]>;
   findTeamNumberByCode(code: string): Promise<number | null>;
   listScheduledTournaments(teamNumber: number): Promise<Tournament[]>;
+  findTeamTournamentEntry(
+    tournamentKey: string,
+    teamNumber: number
+  ): Promise<TeamTournamentEntry | null>;
 }
 
 export function createTournamentsRepository(database: Database): TournamentsRepository {
@@ -284,6 +293,26 @@ export function createTournamentsRepository(database: Database): TournamentsRepo
         .innerJoin(scouterScheduleShifts, eq(scouterScheduleShifts.tournamentKey, tournaments.key))
         .where(eq(scouterScheduleShifts.sourceTeamNumber, teamNumber))
         .orderBy(asc(tournaments.date), asc(tournaments.key));
+    },
+    async findTeamTournamentEntry(tournamentKey, teamNumber) {
+      const [row] = await database
+        .select({
+          number: teams.number,
+          name: teams.name,
+          matchesTotal: count(teamMatchData.key),
+        })
+        .from(teams)
+        .innerJoin(teamMatchData, eq(teamMatchData.teamNumber, teams.number))
+        .where(
+          and(
+            eq(teamMatchData.tournamentKey, tournamentKey),
+            eq(teamMatchData.teamNumber, teamNumber),
+            eq(teamMatchData.matchType, 'QUALIFICATION')
+          )
+        )
+        .groupBy(teams.number, teams.name)
+        .limit(1);
+      return row ?? null;
     },
     async findShift(uuid) {
       const [row] = await database

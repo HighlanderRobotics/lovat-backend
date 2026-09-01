@@ -106,6 +106,9 @@ describe('teams module', () => {
         async listMatches() {
           return [];
         },
+        async getTeamTournamentStatus() {
+          throw new Error('Not used by this test');
+        },
         async getPublicScouterSchedule() {
           throw new Error('Not used by this test');
         },

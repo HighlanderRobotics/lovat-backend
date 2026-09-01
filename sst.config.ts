@@ -69,6 +69,7 @@ export default $config({
         NODE_ENV: $app.stage === 'production' ? 'production' : 'development',
         AUTH0_DOMAIN: process.env.AUTH0_DOMAIN ?? '',
         AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE ?? 'https://api.lovat.app',
+        TBA_KEY: process.env.TBA_KEY ?? '',
         API_VERSION: '0.1.0',
       },
 

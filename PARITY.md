@@ -24,7 +24,8 @@ tests are present.
 - [ ] On-demand match import and Slack break warnings during scout-report upload
 - [x] Database-backed match catalog, public match existence, source-aware report counts, and
       schedule progress
-- [ ] Match results, team tournament status, and on-demand TBA match refresh
+- [x] Team tournament qualification status backed by The Blue Alliance
+- [ ] Match results and on-demand TBA match refresh
 - [x] Mutable picklist CRUD
 - [x] Shared/scored picklist CRUD with legacy metric defaults and team-wide access
 - [x] Registered-team request, join-by-code, and registration status lifecycle

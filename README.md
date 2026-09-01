@@ -18,6 +18,8 @@ The in-progress v2 Lovat API, structured as a Hono modular monolith.
 
 2. Copy `.env.example` to `.env` and provide local values.
 
+   A The Blue Alliance read API key is required for live tournament status endpoints.
+
 3. Start the local API:
 
    ```sh

@@ -7,6 +7,7 @@ const EnvironmentSchema = z
     API_VERSION: z.string().default('0.1.0'),
     AUTH0_DOMAIN: z.string().min(1),
     AUTH0_AUDIENCE: z.string().url().default('https://api.lovat.app'),
+    TBA_KEY: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1).optional(),
     PGHOST: z.string().min(1).optional(),
     PGPORT: z.coerce.number().int().positive().optional(),

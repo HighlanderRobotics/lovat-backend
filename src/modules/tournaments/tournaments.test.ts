@@ -136,6 +136,10 @@ function createMemoryRepository(): TournamentsRepository {
     async listScheduledTournaments(teamNumber) {
       return teamNumber === 8033 ? [tournamentRows[0]] : [];
     },
+    async findTeamTournamentEntry(key, teamNumber) {
+      const team = tournamentTeams.get(key)?.find(({ number }) => number === teamNumber);
+      return team ? { ...team, matchesTotal: 12 } : null;
+    },
     async listMatchReportRows(key) {
       if (key !== '2026alpha') return [];
       return [8033, 254, 1678, 4414, 5940, 971].flatMap<MatchReportRow>((teamNumber, station) => {
@@ -210,7 +214,12 @@ describe('tournaments module', () => {
 
   beforeEach(() => {
     dependencies = {
-      tournaments: createTournamentsService(createMemoryRepository()),
+      tournaments: createTournamentsService(createMemoryRepository(), {
+        async getTeamEventStatus(key, teamNumber) {
+          if (key !== '2026alpha' || teamNumber !== 8033) throw new Error('Unexpected TBA request');
+          return { rank: 4, rankingPoints: 27, matchesPlayed: 9 };
+        },
+      }),
       accounts: {
         async getRequired() {
           throw new Error('Not used by this test');
@@ -333,6 +342,22 @@ describe('tournaments module', () => {
         { number: 254, name: 'The Cheesy Poofs' },
         { number: 8033, name: 'Highlander Robotics' },
       ],
+    });
+  });
+
+  it('returns qualification status with local match totals and TBA rankings', async () => {
+    const response = await createApp(dependencies).request(
+      '/v2/tournaments/2026alpha/team-status?teamNumber=8033',
+      { headers: { authorization: 'Bearer valid-token' } }
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      number: 8033,
+      name: 'Highlander Robotics',
+      rank: 4,
+      rankingPoints: 27,
+      matchesPlayed: 9,
+      matchesTotal: 12,
     });
   });
 

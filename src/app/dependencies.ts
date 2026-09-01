@@ -29,6 +29,7 @@ import {
 } from '../modules/shared-picklists';
 import type { SharedPicklistsService } from '../modules/shared-picklists';
 import { createCompositeAuthenticator } from '../platform/auth/composite-authenticator';
+import { createTbaClient } from '../integrations/tba/tba-client';
 
 export type AppDependencies = {
   accounts: AccountsService;
@@ -63,7 +64,10 @@ export function createProductionDependencies(): AppDependencies {
   return {
     accounts: createAccountsService(accountsRepository),
     apiKeys: createApiKeysService(apiKeysRepository),
-    tournaments: createTournamentsService(tournamentsRepository),
+    tournaments: createTournamentsService(
+      tournamentsRepository,
+      createTbaClient(environment.TBA_KEY)
+    ),
     teams: createTeamsService(teamsRepository),
     scouters: createScoutersService(scoutersRepository),
     mutablePicklists: createMutablePicklistsService(mutablePicklistsRepository),

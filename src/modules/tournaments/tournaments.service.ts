@@ -6,6 +6,7 @@ import type {
   TournamentListOptions,
   TournamentsRepository,
 } from './tournaments.repository';
+import type { TbaClient } from '../../integrations/tba/tba-client';
 
 type MatchTeam = {
   number: number;
@@ -128,7 +129,7 @@ function groupMatchRows(
 
 type ListOptions = Pick<TournamentListOptions, 'filter' | 'limit' | 'offset'>;
 
-export function createTournamentsService(repository: TournamentsRepository) {
+export function createTournamentsService(repository: TournamentsRepository, tba?: TbaClient) {
   async function scheduleAccount(userId: string, requireLead = false) {
     const account = await repository.findScheduleAccount(userId);
     if (!account || account.teamNumber === null || account.emailVerified !== true)
@@ -211,6 +212,16 @@ export function createTournamentsService(repository: TournamentsRepository) {
         shifts,
         parseTeamFilter(teams)
       );
+    },
+
+    async getTeamTournamentStatus(userId: string, key: string, teamNumber: number) {
+      await scheduleAccount(userId);
+      if (!(await repository.exists(key))) throw new NotFound('Tournament not found');
+      const entry = await repository.findTeamTournamentEntry(key, teamNumber);
+      if (!entry) throw new NotFound('Team is not in this tournament');
+      if (!tba) throw new Error('The Blue Alliance client is not configured');
+      const status = await tba.getTeamEventStatus(key, teamNumber);
+      return { ...entry, ...status };
     },
 
     async getPublicScouterSchedule(code: string, key: string) {

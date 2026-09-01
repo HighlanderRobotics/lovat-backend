@@ -20,6 +20,8 @@ import {
   PublicScouterScheduleSchema,
   TeamCodeScheduleHeaderSchema,
   PublicScheduledTournamentsSchema,
+  TeamTournamentStatusQuerySchema,
+  TeamTournamentStatusSchema,
 } from './tournaments.contracts';
 import type { TournamentsService } from './tournaments.service';
 
@@ -60,6 +62,23 @@ const listMatchesRoute = createRoute({
     401: { description: 'Authentication required', ...errorResponse },
     403: { description: 'A verified team is required', ...errorResponse },
     404: { description: 'Tournament not found', ...errorResponse },
+  },
+});
+const teamTournamentStatusRoute = createRoute({
+  method: 'get',
+  path: '/{key}/team-status',
+  security: [{ DashboardAuth: [] }],
+  request: { params: TournamentPathSchema, query: TeamTournamentStatusQuerySchema },
+  responses: {
+    200: {
+      description: 'Team qualification status from The Blue Alliance',
+      content: { 'application/json': { schema: TeamTournamentStatusSchema } },
+    },
+    400: { description: 'Invalid team number', ...errorResponse },
+    401: { description: 'Authentication required', ...errorResponse },
+    403: { description: 'A verified team is required', ...errorResponse },
+    404: { description: 'Tournament or team participation not found', ...errorResponse },
+    500: { description: 'The Blue Alliance status is unavailable', ...errorResponse },
   },
 });
 const publicScouterScheduleRoute = createRoute({
@@ -246,6 +265,17 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
         context.get('auth').userId,
         key,
         context.req.valid('query').teams
+      ),
+      200
+    );
+  });
+  router.openapi(teamTournamentStatusRoute, async (context) => {
+    const { key } = context.req.valid('param');
+    return context.json(
+      await dependencies.tournaments.getTeamTournamentStatus(
+        context.get('auth').userId,
+        key,
+        context.req.valid('query').teamNumber
       ),
       200
     );
