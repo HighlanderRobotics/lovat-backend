@@ -141,6 +141,8 @@ describe('teams module', () => {
       scoutReports: unusedScoutReports,
       authenticator: {
         async authenticate(token) {
+          if (token === 'api-token')
+            return { userId: 'analyst', role: 'ANALYST', tokenType: 'apiKey' };
           return token === 'valid-token'
             ? { userId: 'analyst', role: 'ANALYST', tokenType: 'jwt' }
             : null;
@@ -211,6 +213,14 @@ describe('teams module', () => {
     const specification = JSON.stringify(await (await app.request('/v2/openapi.json')).json());
     expect(specification).toContain('/v2/teams');
     expect(specification).toContain('TeamListResponse');
+  });
+
+  it('allows API keys on the read-only team catalog', async () => {
+    const response = await createApp(dependencies).request('/v2/teams?limit=1', {
+      headers: { authorization: 'Bearer api-token' },
+    });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { teams: unknown[] }).teams).toHaveLength(1);
   });
 });
 

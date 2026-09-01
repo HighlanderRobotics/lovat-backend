@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import type { Database } from '../../platform/database/client';
 import { apiKeys, registeredTeams, users } from '../../platform/database/schema';
 
@@ -14,6 +14,8 @@ export type ApiKeyWithOwner = ApiKeyRecord & { owner: ApiKeyOwner };
 export interface ApiKeysRepository {
   findOwner(userId: string): Promise<ApiKeyOwner | null>;
   findById(uuid: string): Promise<ApiKeyWithOwner | null>;
+  findByHash(keyHash: string): Promise<ApiKeyWithOwner | null>;
+  recordUsage(uuid: string): Promise<void>;
   listByUser(userId: string): Promise<ApiKeyWithUsername[]>;
   listByTeam(teamNumber: number): Promise<ApiKeyWithUsername[]>;
   create(input: { keyHash: string; name: string; userId: string }): Promise<void>;
@@ -31,6 +33,30 @@ const publicKeySelection = {
 };
 
 export function createApiKeysRepository(database: Database): ApiKeysRepository {
+  async function findWithOwner(field: 'uuid' | 'keyHash', value: string) {
+    const [key] = await database
+      .select({
+        uuid: apiKeys.uuid,
+        keyHash: apiKeys.keyHash,
+        name: apiKeys.name,
+        userId: apiKeys.userId,
+        createdAt: apiKeys.createdAt,
+        lastUsed: apiKeys.lastUsed,
+        requests: apiKeys.requests,
+        owner: {
+          id: users.id,
+          role: users.role,
+          teamNumber: users.teamNumber,
+          emailVerified: registeredTeams.emailVerified,
+        },
+      })
+      .from(apiKeys)
+      .innerJoin(users, eq(apiKeys.userId, users.id))
+      .leftJoin(registeredTeams, eq(users.teamNumber, registeredTeams.number))
+      .where(eq(apiKeys[field], value))
+      .limit(1);
+    return key ?? null;
+  }
   return {
     async findOwner(userId) {
       const [owner] = await database
@@ -48,28 +74,16 @@ export function createApiKeysRepository(database: Database): ApiKeysRepository {
     },
 
     async findById(uuid) {
-      const [key] = await database
-        .select({
-          uuid: apiKeys.uuid,
-          keyHash: apiKeys.keyHash,
-          name: apiKeys.name,
-          userId: apiKeys.userId,
-          createdAt: apiKeys.createdAt,
-          lastUsed: apiKeys.lastUsed,
-          requests: apiKeys.requests,
-          owner: {
-            id: users.id,
-            role: users.role,
-            teamNumber: users.teamNumber,
-            emailVerified: registeredTeams.emailVerified,
-          },
-        })
-        .from(apiKeys)
-        .innerJoin(users, eq(apiKeys.userId, users.id))
-        .leftJoin(registeredTeams, eq(users.teamNumber, registeredTeams.number))
-        .where(eq(apiKeys.uuid, uuid))
-        .limit(1);
-      return key ?? null;
+      return findWithOwner('uuid', uuid);
+    },
+    findByHash(keyHash) {
+      return findWithOwner('keyHash', keyHash);
+    },
+    async recordUsage(uuid) {
+      await database
+        .update(apiKeys)
+        .set({ lastUsed: new Date(), requests: sql`${apiKeys.requests} + 1` })
+        .where(eq(apiKeys.uuid, uuid));
     },
 
     listByUser(userId) {

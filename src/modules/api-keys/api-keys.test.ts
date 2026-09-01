@@ -10,6 +10,7 @@ import type {
   ApiKeyWithUsername,
 } from './api-keys.repository';
 import { createApiKeysService } from './api-keys.service';
+import { createApiKeyAuthenticator } from './api-key-authenticator';
 
 const analyst: ApiKeyOwner = {
   id: 'analyst',
@@ -63,6 +64,15 @@ function createMemoryRepository() {
       const key = keys.get(uuid);
       const owner = key ? owners.get(key.userId) : null;
       return key && owner ? { ...key, owner } : null;
+    },
+    async findByHash(keyHash) {
+      const key = [...keys.values()].find((record) => record.keyHash === keyHash);
+      const owner = key ? owners.get(key.userId) : null;
+      return key && owner ? { ...key, owner } : null;
+    },
+    async recordUsage(uuid) {
+      const key = keys.get(uuid);
+      if (key) keys.set(uuid, { ...key, requests: key.requests + 1, lastUsed: new Date() });
     },
     async listByUser(userId) {
       return visibleKeys([...keys.values()].filter((key) => key.userId === userId));
@@ -239,6 +249,24 @@ describe('api keys module', () => {
     expect(stored.name).toBe('CI');
     expect(stored.keyHash).toBe(createHash('sha256').update(apiKey).digest('hex'));
     expect(stored.keyHash).not.toContain(apiKey);
+  });
+
+  it('authenticates hashed API keys and records usage metadata', async () => {
+    const raw = 'lvt-test-secret';
+    const uuid = memory.addKey(analyst, 'Automation');
+    memory.keys.set(uuid, {
+      ...memory.keys.get(uuid)!,
+      keyHash: createHash('sha256').update(raw).digest('hex'),
+    });
+    const authenticator = createApiKeyAuthenticator(memory.repository);
+    expect(await authenticator.authenticate(raw)).toEqual({
+      userId: analyst.id,
+      role: analyst.role,
+      tokenType: 'apiKey',
+    });
+    expect(memory.keys.get(uuid)?.requests).toBe(1);
+    expect(memory.keys.get(uuid)?.lastUsed).toBeInstanceOf(Date);
+    expect(await authenticator.authenticate('lvt-invalid')).toBeNull();
   });
 
   it('shows analysts their own keys and scouting leads all team keys', async () => {

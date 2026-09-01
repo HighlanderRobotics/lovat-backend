@@ -54,7 +54,8 @@ tests are present.
 - [ ] Slack OAuth, commands, events, subscriptions, and warnings
 - [ ] Email verification delivery and resend throttling
 - [ ] Scheduled imports, cleanup jobs, and deployment-time jobs
-- [ ] API-key authentication for legacy-compatible read endpoints
+- [x] Hashed API-key authentication, usage accounting, and read-only team catalog access
+- [ ] API-key access on the remaining legacy-compatible read endpoints
 - [ ] PostHog request analytics
 
 ## Final parity gate

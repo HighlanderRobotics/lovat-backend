@@ -3,7 +3,7 @@ import type { AccountRole } from '../modules/accounts/accounts.repository';
 export type AuthIdentity = {
   userId: string;
   role: AccountRole;
-  tokenType: 'jwt';
+  tokenType: 'jwt' | 'apiKey';
 };
 
 export type AppEnvironment = {

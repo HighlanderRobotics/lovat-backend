@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
-import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import { bearerAuth } from '../../platform/auth/bearer-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest } from '../../platform/http/errors';
@@ -43,7 +43,7 @@ export function createTeamsRouter(dependencies: TeamsRouteDependencies) {
       if (!result.success) throw new BadRequest();
     },
   });
-  router.use('*', dashboardAuth(dependencies.authenticator));
+  router.use('*', bearerAuth(dependencies.authenticator));
 
   router.openapi(listTeamsRoute, async (context) => {
     const query = context.req.valid('query');

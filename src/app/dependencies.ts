@@ -1,6 +1,10 @@
 import { createAuth0Authenticator } from '../integrations/auth0/auth0-authenticator';
 import { createAccountsRepository, createAccountsService } from '../modules/accounts';
-import { createApiKeysRepository, createApiKeysService } from '../modules/api-keys';
+import {
+  createApiKeyAuthenticator,
+  createApiKeysRepository,
+  createApiKeysService,
+} from '../modules/api-keys';
 import { createTournamentsRepository, createTournamentsService } from '../modules/tournaments';
 import { createTeamsRepository, createTeamsService } from '../modules/teams';
 import { createScoutersRepository, createScoutersService } from '../modules/scouters';
@@ -24,6 +28,7 @@ import {
   createSharedPicklistsService,
 } from '../modules/shared-picklists';
 import type { SharedPicklistsService } from '../modules/shared-picklists';
+import { createCompositeAuthenticator } from '../platform/auth/composite-authenticator';
 
 export type AppDependencies = {
   accounts: AccountsService;
@@ -49,6 +54,11 @@ export function createProductionDependencies(): AppDependencies {
   const mutablePicklistsRepository = createMutablePicklistsRepository(database);
   const scoutReportsRepository = createScoutReportsRepository(database);
   const sharedPicklistsRepository = createSharedPicklistsRepository(database);
+  const dashboardAuthenticator = createAuth0Authenticator(
+    environment.AUTH0_DOMAIN,
+    environment.AUTH0_AUDIENCE,
+    accountsRepository
+  );
 
   return {
     accounts: createAccountsService(accountsRepository),
@@ -59,10 +69,9 @@ export function createProductionDependencies(): AppDependencies {
     mutablePicklists: createMutablePicklistsService(mutablePicklistsRepository),
     scoutReports: createScoutReportsService(scoutReportsRepository),
     sharedPicklists: createSharedPicklistsService(sharedPicklistsRepository),
-    authenticator: createAuth0Authenticator(
-      environment.AUTH0_DOMAIN,
-      environment.AUTH0_AUDIENCE,
-      accountsRepository
+    authenticator: createCompositeAuthenticator(
+      dashboardAuthenticator,
+      createApiKeyAuthenticator(apiKeysRepository)
     ),
     apiVersion: environment.API_VERSION,
   };
