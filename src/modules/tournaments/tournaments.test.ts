@@ -3,6 +3,7 @@ import { createApp } from '../../app/create-app';
 import type { AppDependencies } from '../../app/dependencies';
 import type {
   Team,
+  MatchReportRow,
   Tournament,
   TournamentListOptions,
   TournamentsRepository,
@@ -107,10 +108,67 @@ function createMemoryRepository(): TournamentsRepository {
         teamNumber: 8033,
         role: userId === 'lead' ? 'SCOUTING_LEAD' : 'ANALYST',
         emailVerified: true,
+        teamSourceRule: { mode: 'EXCLUDE', items: [] },
       };
     },
     async findShift(uuid) {
       return storedShift?.uuid === uuid ? storedShift : null;
+    },
+    async findTeamMatch(input) {
+      if (
+        input.tournamentKey !== '2026alpha' ||
+        input.teamNumber !== 8033 ||
+        input.matchNumber !== 1 ||
+        input.matchType !== 'QUALIFICATION'
+      )
+        return null;
+      return {
+        key: '2026alpha_qm1_0',
+        tournamentKey: '2026alpha',
+        matchNumber: 1,
+        teamNumber: 8033,
+        matchType: 'QUALIFICATION',
+      };
+    },
+    async listMatchReportRows(key) {
+      if (key !== '2026alpha') return [];
+      return [8033, 254, 1678, 4414, 5940, 971].flatMap<MatchReportRow>((teamNumber, station) => {
+        const base = {
+          key: `2026alpha_qm1_${station}`,
+          matchNumber: 1,
+          matchType: 'QUALIFICATION' as const,
+          teamNumber,
+        };
+        if (station === 0)
+          return [
+            {
+              ...base,
+              reportUuid: 'report-own',
+              reportScouterUuid: '00000000-0000-4000-8000-000000000011',
+              reportScouterName: 'Scout One',
+              reportSourceTeamNumber: 8033,
+            },
+          ];
+        if (station === 1)
+          return [
+            {
+              ...base,
+              reportUuid: 'report-external',
+              reportScouterUuid: 'external-scout',
+              reportScouterName: 'External',
+              reportSourceTeamNumber: 254,
+            },
+          ];
+        return [
+          {
+            ...base,
+            reportUuid: null,
+            reportScouterUuid: null,
+            reportScouterName: null,
+            reportSourceTeamNumber: null,
+          },
+        ];
+      });
     },
     async hasOverlappingShift(_team, _key, start) {
       return start === 99;
@@ -362,6 +420,59 @@ describe('tournaments module', () => {
         })
       ).status
     ).toBe(400);
+  });
+
+  it('checks match participation publicly and identifies the alliance', async () => {
+    const app = createApp(dependencies);
+    const response = await app.request(
+      '/v2/tournaments/matches/check?tournamentKey=2026alpha&teamNumber=8033&matchNumber=1&isElim=false'
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      match: {
+        key: '2026alpha_qm1_0',
+        tournamentKey: '2026alpha',
+        matchNumber: 1,
+        teamNumber: 8033,
+        matchType: 'QUALIFICATION',
+      },
+      alliance: 'red',
+    });
+    expect(
+      (
+        await app.request(
+          '/v2/tournaments/matches/check?tournamentKey=2026alpha&teamNumber=8033&matchNumber=2&isElim=false'
+        )
+      ).status
+    ).toBe(404);
+  });
+
+  it('lists match scouting progress, external reports, assignments, and team filters', async () => {
+    const app = createApp(dependencies);
+    const response = await app.request('/v2/tournaments/2026alpha/matches', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(response.status).toBe(200);
+    const [match] = (await response.json()) as {
+      matchNumber: number;
+      scouted: boolean;
+      finished: boolean;
+      team1: { scouters: { name: string; scouted: boolean }[]; externalReports: number };
+      team2: { externalReports: number };
+    }[];
+    expect(match.matchNumber).toBe(1);
+    expect(match.scouted).toBe(true);
+    expect(match.finished).toBe(true);
+    expect(match.team1.scouters).toEqual([{ name: 'Scout One', scouted: true }]);
+    expect(match.team1.externalReports).toBe(0);
+    expect(match.team2.externalReports).toBe(1);
+
+    const filtered = await app.request(
+      `/v2/tournaments/2026alpha/matches?teams=${encodeURIComponent('[9999]')}`,
+      { headers: { authorization: 'Bearer valid-token' } }
+    );
+    expect(await filtered.json()).toEqual([]);
+    expect((await app.request('/v2/tournaments/2026alpha/matches')).status).toBe(401);
   });
 });
 

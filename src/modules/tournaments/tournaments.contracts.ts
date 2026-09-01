@@ -1,5 +1,5 @@
 import { z } from '@hono/zod-openapi';
-import { TeamSchema, TournamentSchema } from '../../platform/database/schemas';
+import { TeamMatchDataSchema, TeamSchema, TournamentSchema } from '../../platform/database/schemas';
 
 export const TournamentSummarySchema = TournamentSchema.extend({
   isParticipant: z.boolean(),
@@ -23,6 +23,37 @@ export const TournamentListResponseSchema = z
 export const TournamentPathSchema = TournamentSchema.pick({ key: true })
   .extend({ key: z.string().trim().min(1).max(50) })
   .openapi('TournamentPath');
+
+export const MatchCatalogQuerySchema = z.object({ teams: z.string().optional() });
+export const MatchCheckQuerySchema = z.object({
+  tournamentKey: z.string().min(1),
+  teamNumber: z.coerce.number().int().positive(),
+  matchNumber: z.coerce.number().int().positive(),
+  isElim: z.enum(['true', 'false']).transform((value) => value === 'true'),
+});
+export const MatchTeamSchema = z.object({
+  number: z.number().int().positive(),
+  scouters: z.array(z.object({ name: z.string().nullable(), scouted: z.boolean() })),
+  externalReports: z.number().int().nonnegative(),
+});
+export const MatchCatalogItemSchema = z
+  .object({
+    matchNumber: z.number().int().positive(),
+    matchType: z.union([z.literal(0), z.literal(1)]),
+    scouted: z.boolean(),
+    finished: z.boolean(),
+    team1: MatchTeamSchema,
+    team2: MatchTeamSchema,
+    team3: MatchTeamSchema,
+    team4: MatchTeamSchema,
+    team5: MatchTeamSchema,
+    team6: MatchTeamSchema,
+  })
+  .openapi('TournamentMatch');
+export const MatchCatalogSchema = z.array(MatchCatalogItemSchema).openapi('TournamentMatchList');
+export const MatchCheckResponseSchema = z
+  .object({ match: TeamMatchDataSchema, alliance: z.enum(['red', 'blue']) })
+  .openapi('MatchCheckResponse');
 
 export const TournamentTeamsResponseSchema = z
   .object({ teams: z.array(TeamSchema) })

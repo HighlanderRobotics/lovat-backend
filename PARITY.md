@@ -21,7 +21,9 @@ tests are present.
 - [ ] Automatic scouter-schedule generation
 - [x] Authenticated scout-report create/read/delete, legacy event timelines, and notes updates
 - [ ] Public team-code scout-report upload, on-demand match import, and break warnings
-- [ ] Match catalog, match existence, results, and team tournament status
+- [x] Database-backed match catalog, public match existence, source-aware report counts, and
+      schedule progress
+- [ ] Match results, team tournament status, and on-demand TBA match refresh
 - [x] Mutable picklist CRUD
 - [ ] Shared/scored picklist CRUD
 - [ ] Registered-team onboarding, verification, approval, and rejection

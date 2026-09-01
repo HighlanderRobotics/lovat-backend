@@ -1,10 +1,130 @@
 import { BadRequest, Forbidden, NotFound } from '../../platform/http/errors';
 import { createHash } from 'node:crypto';
 import type {
+  MatchReportRow,
   ShiftWrite,
   TournamentListOptions,
   TournamentsRepository,
 } from './tournaments.repository';
+
+type MatchTeam = {
+  number: number;
+  scouters: { name: string | null; scouted: boolean }[];
+  externalReports: number;
+};
+
+function parseTeamFilter(value?: string) {
+  if (value === undefined) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed) || !parsed.every((team) => Number.isInteger(team) && team > 0))
+      throw new Error();
+    if (parsed.length > 6) throw new BadRequest('Too many team filters');
+    return parsed as number[];
+  } catch (error) {
+    if (error instanceof BadRequest) throw error;
+    throw new BadRequest('Teams must be a JSON array of team numbers');
+  }
+}
+
+function groupMatchRows(
+  rows: MatchReportRow[],
+  account: { teamNumber: number; teamSourceRule: { mode: 'INCLUDE' | 'EXCLUDE'; items: number[] } },
+  shifts: Awaited<ReturnType<TournamentsRepository['listScouterShifts']>>,
+  teamFilter?: number[]
+) {
+  const sourceItems = new Set(account.teamSourceRule.items);
+  if (account.teamSourceRule.mode === 'EXCLUDE') sourceItems.delete(account.teamNumber);
+  else sourceItems.add(account.teamNumber);
+  const allowed = (source: number) =>
+    account.teamSourceRule.mode === 'INCLUDE' ? sourceItems.has(source) : !sourceItems.has(source);
+  const matches = new Map<string, Map<number, MatchReportRow[]>>();
+  for (const row of rows) {
+    const key = `${row.matchType}:${row.matchNumber}`;
+    const station = Number(row.key.at(-1));
+    if (!Number.isInteger(station) || station < 0 || station > 5) continue;
+    const teams = matches.get(key) ?? new Map<number, MatchReportRow[]>();
+    const stationRows = teams.get(station) ?? [];
+    stationRows.push(row);
+    teams.set(station, stationRows);
+    matches.set(key, teams);
+  }
+  const lastQualification = Math.max(
+    0,
+    ...rows
+      .filter(({ matchType }) => matchType === 'QUALIFICATION')
+      .map(({ matchNumber }) => matchNumber)
+  );
+  const lastFinished = Math.max(
+    0,
+    ...rows
+      .filter(({ matchType, reportUuid }) => matchType === 'QUALIFICATION' && reportUuid !== null)
+      .map(({ matchNumber }) => matchNumber)
+  );
+  return [...matches.entries()]
+    .map(([key, stations]) => {
+      const [type, numberText] = key.split(':');
+      const matchNumber = Number(numberText);
+      const ordinal = type === 'QUALIFICATION' ? matchNumber : lastQualification + matchNumber;
+      const shift = shifts.find(
+        ({ startMatchOrdinalNumber, endMatchOrdinalNumber }) =>
+          ordinal >= startMatchOrdinalNumber && ordinal <= endMatchOrdinalNumber
+      );
+      const teams = Array.from({ length: 6 }, (_, station): MatchTeam | null => {
+        const stationRows = stations.get(station);
+        if (!stationRows?.length) return null;
+        const reports = stationRows.filter(({ reportUuid }) => reportUuid !== null);
+        const valid = reports.filter(
+          ({ reportSourceTeamNumber }) =>
+            reportSourceTeamNumber !== null && allowed(reportSourceTeamNumber)
+        );
+        const own = reports.filter(
+          ({ reportSourceTeamNumber }) => reportSourceTeamNumber === account.teamNumber
+        );
+        const scouters = own.map(({ reportScouterName }) => ({
+          name: reportScouterName,
+          scouted: true,
+        }));
+        const assignedScouters = shift
+          ? [shift.team1, shift.team2, shift.team3, shift.team4, shift.team5, shift.team6][station]
+          : [];
+        for (const assigned of assignedScouters) {
+          if (!own.some(({ reportScouterUuid }) => reportScouterUuid === assigned.uuid))
+            scouters.push({ name: assigned.name, scouted: false });
+        }
+        return {
+          number: stationRows[0].teamNumber,
+          scouters,
+          externalReports: valid.length - own.length,
+        };
+      });
+      if (teams.some((team) => team === null)) return null;
+      const concrete = teams as MatchTeam[];
+      if (teamFilter?.some((required) => !concrete.some(({ number }) => number === required)))
+        return null;
+      return {
+        matchNumber,
+        matchType: type === 'QUALIFICATION' ? (0 as const) : (1 as const),
+        scouted: concrete.some((_, station) =>
+          (stations.get(station) ?? []).some(
+            ({ reportSourceTeamNumber }) =>
+              reportSourceTeamNumber !== null && allowed(reportSourceTeamNumber)
+          )
+        ),
+        finished: type === 'QUALIFICATION' && matchNumber <= lastFinished,
+        team1: concrete[0],
+        team2: concrete[1],
+        team3: concrete[2],
+        team4: concrete[3],
+        team5: concrete[4],
+        team6: concrete[5],
+      };
+    })
+    .filter((match): match is NonNullable<typeof match> => match !== null)
+    .sort(
+      (left, right) => left.matchType - right.matchType || left.matchNumber - right.matchNumber
+    );
+}
 
 type ListOptions = Pick<TournamentListOptions, 'filter' | 'limit' | 'offset'>;
 
@@ -57,6 +177,40 @@ export function createTournamentsService(repository: TournamentsRepository) {
     async listTeams(key: string) {
       if (!(await repository.exists(key))) throw new NotFound('Tournament not found');
       return repository.listTeams(key);
+    },
+
+    async checkMatch(input: {
+      tournamentKey: string;
+      teamNumber: number;
+      matchNumber: number;
+      isElim: boolean;
+    }) {
+      const match = await repository.findTeamMatch({
+        ...input,
+        matchType: input.isElim ? 'ELIMINATION' : 'QUALIFICATION',
+      });
+      if (!match) throw new NotFound('Match not found');
+      return {
+        match,
+        alliance: Number(match.key.at(-1)) < 3 ? ('red' as const) : ('blue' as const),
+      };
+    },
+
+    async listMatches(userId: string, key: string, teams?: string) {
+      if (!(await repository.exists(key))) throw new NotFound('Tournament not found');
+      const account = await repository.findScheduleAccount(userId);
+      if (!account || account.teamNumber === null || account.emailVerified !== true)
+        throw new Forbidden('A verified team is required');
+      const [rows, shifts] = await Promise.all([
+        repository.listMatchReportRows(key),
+        repository.listScouterShifts(account.teamNumber, key),
+      ]);
+      return groupMatchRows(
+        rows,
+        { teamNumber: account.teamNumber, teamSourceRule: account.teamSourceRule },
+        shifts,
+        parseTeamFilter(teams)
+      );
     },
 
     async getScouterSchedule(userId: string, key: string) {

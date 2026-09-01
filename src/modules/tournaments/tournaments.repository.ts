@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, gte, ilike, inArray, lte, ne, or, sql } from
 import type { Database } from '../../platform/database/client';
 import {
   registeredTeams,
+  scoutReports,
   scouters,
   scouterScheduleShifts,
   scouterScheduleShiftTeam1,
@@ -42,6 +43,17 @@ export type ScheduleAccount = {
   teamNumber: number | null;
   role: 'ANALYST' | 'SCOUTING_LEAD';
   emailVerified: boolean | null;
+  teamSourceRule: { mode: 'INCLUDE' | 'EXCLUDE'; items: number[] };
+};
+export type MatchReportRow = {
+  key: string;
+  matchNumber: number;
+  matchType: 'QUALIFICATION' | 'ELIMINATION';
+  teamNumber: number;
+  reportUuid: string | null;
+  reportScouterUuid: string | null;
+  reportScouterName: string | null;
+  reportSourceTeamNumber: number | null;
 };
 
 export type TournamentListOptions = {
@@ -73,6 +85,13 @@ export interface TournamentsRepository {
   createShift(teamNumber: number, tournamentKey: string, input: ShiftWrite): Promise<string>;
   updateShift(uuid: string, input: ShiftWrite): Promise<boolean>;
   deleteShift(uuid: string): Promise<boolean>;
+  findTeamMatch(input: {
+    tournamentKey: string;
+    teamNumber: number;
+    matchNumber: number;
+    matchType: 'QUALIFICATION' | 'ELIMINATION';
+  }): Promise<typeof teamMatchData.$inferSelect | null>;
+  listMatchReportRows(tournamentKey: string): Promise<MatchReportRow[]>;
 }
 
 export function createTournamentsRepository(database: Database): TournamentsRepository {
@@ -202,12 +221,45 @@ export function createTournamentsRepository(database: Database): TournamentsRepo
           teamNumber: users.teamNumber,
           role: users.role,
           emailVerified: registeredTeams.emailVerified,
+          teamSourceRule: users.teamSourceRule,
         })
         .from(users)
         .leftJoin(registeredTeams, eq(users.teamNumber, registeredTeams.number))
         .where(eq(users.id, userId))
         .limit(1);
       return row ?? null;
+    },
+    async findTeamMatch(input) {
+      const [row] = await database
+        .select()
+        .from(teamMatchData)
+        .where(
+          and(
+            eq(teamMatchData.tournamentKey, input.tournamentKey),
+            eq(teamMatchData.teamNumber, input.teamNumber),
+            eq(teamMatchData.matchNumber, input.matchNumber),
+            eq(teamMatchData.matchType, input.matchType)
+          )
+        )
+        .limit(1);
+      return row ?? null;
+    },
+    listMatchReportRows(tournamentKey) {
+      return database
+        .select({
+          key: teamMatchData.key,
+          matchNumber: teamMatchData.matchNumber,
+          matchType: teamMatchData.matchType,
+          teamNumber: teamMatchData.teamNumber,
+          reportUuid: scoutReports.uuid,
+          reportScouterUuid: scouters.uuid,
+          reportScouterName: scouters.name,
+          reportSourceTeamNumber: scouters.sourceTeamNumber,
+        })
+        .from(teamMatchData)
+        .leftJoin(scoutReports, eq(scoutReports.teamMatchKey, teamMatchData.key))
+        .leftJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
+        .where(eq(teamMatchData.tournamentKey, tournamentKey));
     },
     async findShift(uuid) {
       const [row] = await database

@@ -64,6 +64,12 @@ describe('accounts module', () => {
         async listTeams() {
           return [];
         },
+        async checkMatch() {
+          throw new Error('Not used by this test');
+        },
+        async listMatches() {
+          return [];
+        },
         async getScouterSchedule() {
           return { hash: '', data: [] };
         },

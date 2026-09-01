@@ -13,6 +13,10 @@ import {
   ScouterShiftCreatedSchema,
   ScouterShiftPathSchema,
   ScouterShiftWriteSchema,
+  MatchCatalogQuerySchema,
+  MatchCatalogSchema,
+  MatchCheckQuerySchema,
+  MatchCheckResponseSchema,
 } from './tournaments.contracts';
 import type { TournamentsService } from './tournaments.service';
 
@@ -24,6 +28,37 @@ type TournamentsRouteDependencies = {
 const errorResponse = {
   content: { 'application/json': { schema: ErrorResponseSchema } },
 } as const;
+
+const checkMatchRoute = createRoute({
+  method: 'get',
+  path: '/matches/check',
+  request: { query: MatchCheckQuerySchema },
+  responses: {
+    200: {
+      description: 'Matching team slot and alliance',
+      content: { 'application/json': { schema: MatchCheckResponseSchema } },
+    },
+    400: { description: 'Invalid query', ...errorResponse },
+    404: { description: 'Match not found', ...errorResponse },
+  },
+});
+
+const listMatchesRoute = createRoute({
+  method: 'get',
+  path: '/{key}/matches',
+  security: [{ DashboardAuth: [] }],
+  request: { params: TournamentPathSchema, query: MatchCatalogQuerySchema },
+  responses: {
+    200: {
+      description: 'Tournament matches with scouting progress',
+      content: { 'application/json': { schema: MatchCatalogSchema } },
+    },
+    400: { description: 'Invalid team filter', ...errorResponse },
+    401: { description: 'Authentication required', ...errorResponse },
+    403: { description: 'A verified team is required', ...errorResponse },
+    404: { description: 'Tournament not found', ...errorResponse },
+  },
+});
 
 const listTournamentsRoute = createRoute({
   method: 'get',
@@ -120,6 +155,9 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
       if (!result.success) throw new BadRequest();
     },
   });
+  router.openapi(checkMatchRoute, async (context) =>
+    context.json(await dependencies.tournaments.checkMatch(context.req.valid('query')), 200)
+  );
   router.use('*', dashboardAuth(dependencies.authenticator));
 
   router.openapi(listTournamentsRoute, async (context) => {
@@ -132,6 +170,17 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
     const { key } = context.req.valid('param');
     const teams = await dependencies.tournaments.listTeams(key);
     return context.json({ teams }, 200);
+  });
+  router.openapi(listMatchesRoute, async (context) => {
+    const { key } = context.req.valid('param');
+    return context.json(
+      await dependencies.tournaments.listMatches(
+        context.get('auth').userId,
+        key,
+        context.req.valid('query').teams
+      ),
+      200
+    );
   });
 
   router.openapi(getScouterScheduleRoute, async (context) => {
