@@ -14,6 +14,11 @@ import {
   TeamMemberSchema,
   TeamProfileSchema,
   TeamWebsiteUpdateSchema,
+  JoinTeamSchema,
+  RegistrationStatusPathSchema,
+  RegistrationStatusSchema,
+  TeamRegistrationCreatedSchema,
+  TeamRegistrationSchema,
 } from './accounts.contracts';
 import type { AccountsService } from './accounts.service';
 
@@ -204,6 +209,57 @@ const updateTeamWebsiteRoute = createRoute({
     ...teamErrors,
   },
 });
+const registerTeamRoute = createRoute({
+  method: 'post',
+  path: '/team/registration',
+  security: [{ DashboardAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: TeamRegistrationSchema } } } },
+  responses: {
+    201: {
+      description: 'Team registration started',
+      content: { 'application/json': { schema: TeamRegistrationCreatedSchema } },
+    },
+    400: {
+      description: 'Invalid or duplicate team',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    ...teamErrors,
+  },
+});
+const joinTeamRoute = createRoute({
+  method: 'post',
+  path: '/team/join',
+  security: [{ DashboardAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: JoinTeamSchema } } } },
+  responses: {
+    200: {
+      description: 'Joined registered team',
+      content: { 'application/json': { schema: AccountResponseSchema } },
+    },
+    400: {
+      description: 'Invalid request',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    ...teamErrors,
+  },
+});
+const registrationStatusRoute = createRoute({
+  method: 'get',
+  path: '/team/{number}/registration-status',
+  security: [{ DashboardAuth: [] }],
+  request: { params: RegistrationStatusPathSchema },
+  responses: {
+    200: {
+      description: 'Registration lifecycle status',
+      content: { 'application/json': { schema: RegistrationStatusSchema } },
+    },
+    400: {
+      description: 'Invalid team number',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    ...teamErrors,
+  },
+});
 
 export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
   const router = new OpenAPIHono<AppEnvironment>({
@@ -306,6 +362,43 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
       200
     );
   });
+  router.openapi(registerTeamRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
+    return context.json(
+      await dependencies.accounts.registerTeam(
+        context.get('auth').userId,
+        context.req.valid('json')
+      ),
+      201
+    );
+  });
+  router.openapi(joinTeamRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
+    const account = await dependencies.accounts.joinTeam(
+      context.get('auth').userId,
+      context.req.valid('json')
+    );
+    return context.json(
+      {
+        id: account.id,
+        teamNumber: account.teamNumber,
+        email: account.email,
+        emailVerified: account.emailVerified,
+        username: account.username,
+        role: account.role,
+      },
+      200
+    );
+  });
+  router.openapi(registrationStatusRoute, async (context) =>
+    context.json(
+      await dependencies.accounts.getRegistrationStatus(
+        context.get('auth').userId,
+        context.req.valid('param').number
+      ),
+      200
+    )
+  );
 
   return router;
 }

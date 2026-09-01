@@ -1,7 +1,19 @@
-import { Forbidden, NotFound } from '../../platform/http/errors';
+import { randomBytes } from 'node:crypto';
+import { BadRequest, Forbidden, NotFound } from '../../platform/http/errors';
 import type { Account, AccountsRepository } from './accounts.repository';
 
 export function createAccountsService(repository: AccountsRepository) {
+  async function uniqueTeamCode() {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const code = randomBytes(6)
+        .toString('base64url')
+        .replace(/[^A-Z0-9]/gi, '')
+        .toUpperCase()
+        .slice(0, 6);
+      if (code.length === 6 && !(await repository.findRegisteredTeamByCode(code))) return code;
+    }
+    throw new Error('Unable to generate a unique team code');
+  }
   async function teamAccount(id: string, lead = false) {
     const account = await repository.findById(id);
     if (!account) throw new NotFound('Account not found');
@@ -77,6 +89,74 @@ export function createAccountsService(repository: AccountsRepository) {
       const team = await repository.updateTeamWebsite(account.teamNumber, website);
       if (!team) throw new NotFound('Registered team not found');
       return { number: team.number, email: team.email, website: team.website };
+    },
+    async registerTeam(id: string, input: { number: number; email: string }) {
+      const account = await repository.findById(id);
+      if (!account) throw new NotFound('Account not found');
+      if (await repository.findRegisteredTeam(input.number))
+        throw new BadRequest('Team is already registered');
+      const fullRegistration = await repository.isFeatureEnabled('fullRegistration');
+      try {
+        const team = await repository.createRegistration({
+          userId: id,
+          ...input,
+          code: await uniqueTeamCode(),
+          teamApproved: !fullRegistration,
+        });
+        return {
+          number: team.number,
+          verificationRequired: true,
+          approvalRequired: fullRegistration,
+        };
+      } catch (error) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          error.code === '23505'
+        )
+          throw new BadRequest('Team is already registered');
+        throw error;
+      }
+    },
+    async joinTeam(id: string, input: { number: number; code: string }) {
+      const account = await repository.findById(id);
+      if (!account) throw new NotFound('Account not found');
+      const team = await repository.findRegisteredTeam(input.number);
+      if (!team) throw new NotFound('Registered team not found');
+      if (team.code !== input.code) throw new NotFound('Team code is incorrect');
+      const updated = await repository.joinTeam(id, team.number);
+      if (!updated) throw new NotFound('Account not found');
+      return updated;
+    },
+    async getRegistrationStatus(id: string, teamNumber: number) {
+      const [account, team] = await Promise.all([
+        repository.findById(id),
+        repository.findRegisteredTeam(teamNumber),
+      ]);
+      if (!account) throw new NotFound('Account not found');
+      if (!team) return { status: 'NOT_STARTED' as const };
+      const [fullRegistration, userIds] = await Promise.all([
+        repository.isFeatureEnabled('fullRegistration'),
+        repository.listTeamUserIds(teamNumber),
+      ]);
+      const creator = userIds[0] === id;
+      const onTeam = account.teamNumber === teamNumber;
+      if (!creator) {
+        if (team.emailVerified && team.teamApproved)
+          return {
+            status: onTeam ? ('REGISTERED_ON_TEAM' as const) : ('REGISTERED_OFF_TEAM' as const),
+          };
+        return { status: 'PENDING' as const };
+      }
+      if (!team.emailVerified)
+        return { status: 'PENDING_EMAIL_VERIFICATION' as const, email: team.email };
+      if (fullRegistration && !team.website) return { status: 'PENDING_WEBSITE' as const };
+      if (!team.teamApproved)
+        return { status: 'PENDING_TEAM_VERIFICATION' as const, teamEmail: team.email };
+      return {
+        status: onTeam ? ('REGISTERED_ON_TEAM' as const) : ('REGISTERED_OFF_TEAM' as const),
+      };
     },
   };
 }

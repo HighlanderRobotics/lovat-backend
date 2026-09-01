@@ -19,6 +19,7 @@ describe('accounts module', () => {
   let storedAccount: Account | null;
   let teammateAccount: Account;
   let registeredTeam: RegisteredTeam;
+  let otherRegisteredTeam: RegisteredTeam | null;
   let dependencies: AppDependencies;
 
   beforeEach(() => {
@@ -31,13 +32,14 @@ describe('accounts module', () => {
     };
     registeredTeam = {
       number: 8033,
-      code: 'team-code',
+      code: 'ABC123',
       email: 'team@example.com',
       emailVerified: true,
       timeCreated: new Date('2026-01-01T00:00:00Z'),
       teamApproved: true,
       website: null,
     };
+    otherRegisteredTeam = null;
 
     const repository: AccountsRepository = {
       async findById(id) {
@@ -80,12 +82,55 @@ describe('accounts module', () => {
         return null;
       },
       async findRegisteredTeam(teamNumber) {
-        return teamNumber === registeredTeam.number ? registeredTeam : null;
+        if (teamNumber === registeredTeam.number) return registeredTeam;
+        return teamNumber === otherRegisteredTeam?.number ? otherRegisteredTeam : null;
       },
       async updateTeamWebsite(teamNumber, website) {
         if (teamNumber !== registeredTeam.number) return null;
         registeredTeam = { ...registeredTeam, website };
         return registeredTeam;
+      },
+      async findRegisteredTeamByCode(code) {
+        if (registeredTeam.code === code) return registeredTeam;
+        return otherRegisteredTeam?.code === code ? otherRegisteredTeam : null;
+      },
+      async isFeatureEnabled() {
+        return true;
+      },
+      async listTeamUserIds(teamNumber) {
+        return [storedAccount, teammateAccount]
+          .filter((account) => account?.teamNumber === teamNumber)
+          .map((account) => account!.id)
+          .sort();
+      },
+      async createRegistration(input) {
+        otherRegisteredTeam = {
+          number: input.number,
+          code: input.code,
+          email: input.email,
+          emailVerified: false,
+          timeCreated: new Date('2026-02-01T00:00:00Z'),
+          teamApproved: input.teamApproved,
+          website: null,
+        };
+        if (storedAccount?.id === input.userId)
+          storedAccount = {
+            ...storedAccount,
+            teamNumber: input.number,
+            role: 'SCOUTING_LEAD',
+          };
+        return otherRegisteredTeam;
+      },
+      async joinTeam(userId, teamNumber) {
+        if (storedAccount?.id === userId) {
+          storedAccount = { ...storedAccount, teamNumber };
+          return storedAccount;
+        }
+        if (teammateAccount.id === userId) {
+          teammateAccount = { ...teammateAccount, teamNumber };
+          return teammateAccount;
+        }
+        return null;
       },
     };
 
@@ -312,6 +357,54 @@ describe('accounts module', () => {
       email: 'team@example.com',
       website: 'https://team8033.org',
     });
+  });
+
+  it('starts registration and promotes the requesting account', async () => {
+    const response = await createApp(dependencies).request('/v2/accounts/team/registration', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ number: 1678, email: 'contact@team1678.com' }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({
+      number: 1678,
+      verificationRequired: true,
+      approvalRequired: true,
+    });
+    expect(storedAccount?.teamNumber).toBe(1678);
+    expect(storedAccount?.role).toBe('SCOUTING_LEAD');
+    expect(otherRegisteredTeam?.code).toHaveLength(6);
+  });
+
+  it('joins an existing team with its code', async () => {
+    const response = await createApp(dependencies).request('/v2/accounts/team/join', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ number: 8033, code: registeredTeam.code }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { teamNumber: number }).teamNumber).toBe(8033);
+  });
+
+  it('reports the registration lifecycle without exposing the team code', async () => {
+    const app = createApp(dependencies);
+    const notStarted = await app.request('/v2/accounts/team/1678/registration-status', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(await notStarted.json()).toEqual({ status: 'NOT_STARTED' });
+
+    const pendingWebsite = await app.request('/v2/accounts/team/8033/registration-status', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(await pendingWebsite.json()).toEqual({ status: 'PENDING_WEBSITE' });
+
+    registeredTeam = { ...registeredTeam, website: 'https://team8033.org' };
+    const registered = await app.request('/v2/accounts/team/8033/registration-status', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(await registered.json()).toEqual({ status: 'REGISTERED_ON_TEAM' });
   });
 });
 

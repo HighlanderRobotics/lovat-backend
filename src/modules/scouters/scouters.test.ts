@@ -139,6 +139,15 @@ describe('scouters module', () => {
         async updateTeamWebsite() {
           throw new Error('Not used by this test');
         },
+        async registerTeam() {
+          throw new Error('Not used by this test');
+        },
+        async joinTeam() {
+          throw new Error('Not used by this test');
+        },
+        async getRegistrationStatus() {
+          return { status: 'NOT_STARTED' as const };
+        },
       },
       apiKeys: {
         async list() {

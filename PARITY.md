@@ -27,7 +27,8 @@ tests are present.
 - [ ] Match results, team tournament status, and on-demand TBA match refresh
 - [x] Mutable picklist CRUD
 - [x] Shared/scored picklist CRUD with legacy metric defaults and team-wide access
-- [ ] Registered-team onboarding, verification, approval, and rejection
+- [x] Registered-team request, join-by-code, and registration status lifecycle
+- [ ] Signed email verification, approval/rejection callbacks, and notification delivery
 - [x] Public team-code validation and code-scoped active scouter roster
 - [x] Code-authenticated public scouter schedules with match/team/alliance assignments
 - [x] Code-authenticated public tournament catalog and scheduled-event views

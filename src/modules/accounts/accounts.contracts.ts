@@ -63,3 +63,30 @@ export const TeamProfileSchema = z
 export const TeamWebsiteUpdateSchema = z
   .object({ website: z.string().trim().min(1).max(500).nullable() })
   .openapi('TeamWebsiteUpdate');
+export const TeamRegistrationSchema = z
+  .object({ number: z.number().int().positive(), email: z.email() })
+  .openapi('TeamRegistration');
+export const TeamRegistrationCreatedSchema = z
+  .object({
+    number: z.number().int().positive(),
+    verificationRequired: z.boolean(),
+    approvalRequired: z.boolean(),
+  })
+  .openapi('TeamRegistrationCreated');
+export const JoinTeamSchema = z
+  .object({ number: z.number().int().positive(), code: z.string().length(6) })
+  .openapi('JoinTeam');
+export const RegistrationStatusPathSchema = z.object({
+  number: z.coerce.number().int().positive(),
+});
+export const RegistrationStatusSchema = z
+  .discriminatedUnion('status', [
+    z.object({ status: z.literal('NOT_STARTED') }),
+    z.object({ status: z.literal('PENDING_EMAIL_VERIFICATION'), email: z.email() }),
+    z.object({ status: z.literal('PENDING_WEBSITE') }),
+    z.object({ status: z.literal('PENDING_TEAM_VERIFICATION'), teamEmail: z.email() }),
+    z.object({ status: z.literal('REGISTERED_ON_TEAM') }),
+    z.object({ status: z.literal('REGISTERED_OFF_TEAM') }),
+    z.object({ status: z.literal('PENDING') }),
+  ])
+  .openapi('RegistrationStatus');
