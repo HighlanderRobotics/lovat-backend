@@ -147,6 +147,15 @@ describe('api keys module', () => {
         async getScouterSchedule() {
           return { hash: '', data: [] };
         },
+        async createScouterShift() {
+          throw new Error('Not used by this test');
+        },
+        async updateScouterShift() {
+          throw new Error('Not used by this test');
+        },
+        async deleteScouterShift() {
+          throw new Error('Not used by this test');
+        },
       },
       teams: {
         async list() {

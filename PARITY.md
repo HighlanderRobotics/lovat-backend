@@ -17,7 +17,8 @@ tests are present.
 
 ## Remaining manager and scouting work
 
-- [ ] Scouter-schedule create/update/delete and automatic generation
+- [x] Scouter-schedule create/update/delete
+- [ ] Automatic scouter-schedule generation
 - [ ] Scout-report create/read/delete, event timelines, and notes updates
 - [ ] Match catalog, match existence, results, and team tournament status
 - [x] Mutable picklist CRUD

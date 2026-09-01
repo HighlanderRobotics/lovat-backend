@@ -10,6 +10,9 @@ import {
   TournamentPathSchema,
   TournamentTeamsResponseSchema,
   ScouterScheduleResponseSchema,
+  ScouterShiftCreatedSchema,
+  ScouterShiftPathSchema,
+  ScouterShiftWriteSchema,
 } from './tournaments.contracts';
 import type { TournamentsService } from './tournaments.service';
 
@@ -71,6 +74,46 @@ const getScouterScheduleRoute = createRoute({
   },
 });
 
+const mutateErrors = {
+  400: { description: 'Invalid or overlapping shift', ...errorResponse },
+  401: { description: 'Authentication required', ...errorResponse },
+  403: { description: 'Scouting lead access required', ...errorResponse },
+  404: { description: 'Tournament or shift not found', ...errorResponse },
+} as const;
+const createShiftRoute = createRoute({
+  method: 'post',
+  path: '/{key}/scouter-shifts',
+  security: [{ DashboardAuth: [] }],
+  request: {
+    params: TournamentPathSchema,
+    body: { content: { 'application/json': { schema: ScouterShiftWriteSchema } } },
+  },
+  responses: {
+    201: {
+      description: 'Shift created',
+      content: { 'application/json': { schema: ScouterShiftCreatedSchema } },
+    },
+    ...mutateErrors,
+  },
+});
+const updateShiftRoute = createRoute({
+  method: 'put',
+  path: '/{key}/scouter-shifts/{uuid}',
+  security: [{ DashboardAuth: [] }],
+  request: {
+    params: ScouterShiftPathSchema,
+    body: { content: { 'application/json': { schema: ScouterShiftWriteSchema } } },
+  },
+  responses: { 204: { description: 'Shift updated' }, ...mutateErrors },
+});
+const deleteShiftRoute = createRoute({
+  method: 'delete',
+  path: '/{key}/scouter-shifts/{uuid}',
+  security: [{ DashboardAuth: [] }],
+  request: { params: ScouterShiftPathSchema },
+  responses: { 204: { description: 'Shift deleted' }, ...mutateErrors },
+});
+
 export function createTournamentsRouter(dependencies: TournamentsRouteDependencies) {
   const router = new OpenAPIHono<AppEnvironment>({
     defaultHook(result) {
@@ -98,6 +141,31 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
       key
     );
     return context.json(schedule, 200);
+  });
+  router.openapi(createShiftRoute, async (c) =>
+    c.json(
+      await dependencies.tournaments.createScouterShift(
+        c.get('auth').userId,
+        c.req.valid('param').key,
+        c.req.valid('json')
+      ),
+      201
+    )
+  );
+  router.openapi(updateShiftRoute, async (c) => {
+    const { key, uuid } = c.req.valid('param');
+    await dependencies.tournaments.updateScouterShift(
+      c.get('auth').userId,
+      key,
+      uuid,
+      c.req.valid('json')
+    );
+    return c.body(null, 204);
+  });
+  router.openapi(deleteShiftRoute, async (c) => {
+    const { key, uuid } = c.req.valid('param');
+    await dependencies.tournaments.deleteScouterShift(c.get('auth').userId, key, uuid);
+    return c.body(null, 204);
   });
 
   return router;

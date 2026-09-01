@@ -44,6 +44,13 @@ const tournamentTeams = new Map<string, Team[]>([
 ]);
 
 function createMemoryRepository(): TournamentsRepository {
+  let storedShift: {
+    uuid: string;
+    sourceTeamNumber: number;
+    tournamentKey: string;
+    startMatchOrdinalNumber: number;
+    endMatchOrdinalNumber: number;
+  } | null = null;
   return {
     async findUserTeamNumber(userId) {
       if (userId === 'missing') return undefined;
@@ -94,6 +101,42 @@ function createMemoryRepository(): TournamentsRepository {
           team6: [],
         },
       ];
+    },
+    async findScheduleAccount(userId) {
+      return {
+        teamNumber: 8033,
+        role: userId === 'lead' ? 'SCOUTING_LEAD' : 'ANALYST',
+        emailVerified: true,
+      };
+    },
+    async findShift(uuid) {
+      return storedShift?.uuid === uuid ? storedShift : null;
+    },
+    async hasOverlappingShift(_team, _key, start) {
+      return start === 99;
+    },
+    async findActiveScouterIds(_team, ids) {
+      return ids;
+    },
+    async createShift(teamNumber, tournamentKey, input) {
+      storedShift = {
+        uuid: '00000000-0000-4000-8000-000000000020',
+        sourceTeamNumber: teamNumber,
+        tournamentKey,
+        startMatchOrdinalNumber: input.startMatchOrdinalNumber,
+        endMatchOrdinalNumber: input.endMatchOrdinalNumber,
+      };
+      return storedShift.uuid;
+    },
+    async updateShift(uuid, input) {
+      if (!storedShift || storedShift.uuid !== uuid) return false;
+      storedShift = { ...storedShift, ...input };
+      return true;
+    },
+    async deleteShift(uuid) {
+      if (!storedShift || storedShift.uuid !== uuid) return false;
+      storedShift = null;
+      return true;
     },
   };
 }
@@ -148,9 +191,11 @@ describe('tournaments module', () => {
       mutablePicklists: unusedMutablePicklists,
       authenticator: {
         async authenticate(token) {
-          return token === 'valid-token'
-            ? { userId: 'analyst', role: 'ANALYST', tokenType: 'jwt' }
-            : null;
+          if (token === 'valid-token')
+            return { userId: 'analyst', role: 'ANALYST', tokenType: 'jwt' };
+          if (token === 'lead-token')
+            return { userId: 'lead', role: 'SCOUTING_LEAD', tokenType: 'jwt' };
+          return null;
         },
       },
       apiVersion: 'test',
@@ -235,6 +280,87 @@ describe('tournaments module', () => {
     expect(firstBody.hash).toHaveLength(64);
     expect(secondBody.hash).toBe(firstBody.hash);
     expect(firstBody.data).toHaveLength(1);
+  });
+
+  it('allows scouting leads to create, update, and delete shifts', async () => {
+    const app = createApp(dependencies);
+    const body = {
+      startMatchOrdinalNumber: 6,
+      endMatchOrdinalNumber: 10,
+      team1: ['00000000-0000-4000-8000-000000000011'],
+      team2: [],
+      team3: [],
+      team4: [],
+      team5: [],
+      team6: [],
+    };
+    const created = await app.request('/v2/tournaments/2026alpha/scouter-shifts', {
+      method: 'POST',
+      headers: { authorization: 'Bearer lead-token', 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    expect(created.status).toBe(201);
+    const { uuid } = (await created.json()) as { uuid: string };
+    const updated = await app.request(`/v2/tournaments/2026alpha/scouter-shifts/${uuid}`, {
+      method: 'PUT',
+      headers: { authorization: 'Bearer lead-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ ...body, endMatchOrdinalNumber: 12 }),
+    });
+    expect(updated.status).toBe(204);
+    expect(
+      (
+        await app.request(`/v2/tournaments/2026alpha/scouter-shifts/${uuid}`, {
+          method: 'DELETE',
+          headers: { authorization: 'Bearer lead-token' },
+        })
+      ).status
+    ).toBe(204);
+  });
+
+  it('rejects analyst mutations, duplicate assignments, and overlapping ranges', async () => {
+    const app = createApp(dependencies);
+    const uuid = '00000000-0000-4000-8000-000000000011';
+    const base = {
+      startMatchOrdinalNumber: 6,
+      endMatchOrdinalNumber: 10,
+      team1: [uuid],
+      team2: [],
+      team3: [],
+      team4: [],
+      team5: [],
+      team6: [],
+    };
+    expect(
+      (
+        await app.request('/v2/tournaments/2026alpha/scouter-shifts', {
+          method: 'POST',
+          headers: { authorization: 'Bearer valid-token', 'content-type': 'application/json' },
+          body: JSON.stringify(base),
+        })
+      ).status
+    ).toBe(403);
+    expect(
+      (
+        await app.request('/v2/tournaments/2026alpha/scouter-shifts', {
+          method: 'POST',
+          headers: { authorization: 'Bearer lead-token', 'content-type': 'application/json' },
+          body: JSON.stringify({ ...base, team2: [uuid] }),
+        })
+      ).status
+    ).toBe(400);
+    expect(
+      (
+        await app.request('/v2/tournaments/2026alpha/scouter-shifts', {
+          method: 'POST',
+          headers: { authorization: 'Bearer lead-token', 'content-type': 'application/json' },
+          body: JSON.stringify({
+            ...base,
+            startMatchOrdinalNumber: 99,
+            endMatchOrdinalNumber: 100,
+          }),
+        })
+      ).status
+    ).toBe(400);
   });
 });
 

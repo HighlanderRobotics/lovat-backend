@@ -46,3 +46,26 @@ export const ScouterShiftSchema = z
 export const ScouterScheduleResponseSchema = z
   .object({ hash: z.string(), data: z.array(ScouterShiftSchema) })
   .openapi('ScouterScheduleResponse');
+
+const AssignmentIdsSchema = z.array(z.uuid()).max(50);
+export const ScouterShiftWriteSchema = z
+  .object({
+    startMatchOrdinalNumber: z.number().int().positive(),
+    endMatchOrdinalNumber: z.number().int().positive(),
+    team1: AssignmentIdsSchema,
+    team2: AssignmentIdsSchema,
+    team3: AssignmentIdsSchema,
+    team4: AssignmentIdsSchema,
+    team5: AssignmentIdsSchema,
+    team6: AssignmentIdsSchema,
+  })
+  .refine((value) => value.endMatchOrdinalNumber >= value.startMatchOrdinalNumber, {
+    message: 'Shift end must not precede its start',
+  })
+  .openapi('ScouterShiftWrite');
+export const ScouterShiftPathSchema = TournamentPathSchema.extend({
+  uuid: z.uuid(),
+}).openapi('ScouterShiftPath');
+export const ScouterShiftCreatedSchema = z
+  .object({ uuid: z.uuid() })
+  .openapi('ScouterShiftCreated');
