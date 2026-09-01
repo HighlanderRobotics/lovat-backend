@@ -242,6 +242,9 @@ describe('tournaments module', () => {
         async getTeamProfile() {
           throw new Error('Not used by this test');
         },
+        async getTeamCode() {
+          throw new Error('Not used by this test');
+        },
         async updateTeamWebsite() {
           throw new Error('Not used by this test');
         },

@@ -63,6 +63,7 @@ export const TeamProfileSchema = z
 export const TeamWebsiteUpdateSchema = z
   .object({ website: z.string().trim().min(1).max(500).nullable() })
   .openapi('TeamWebsiteUpdate');
+export const TeamCodeSchema = z.object({ code: z.string().min(1) }).openapi('TeamCode');
 export const TeamRegistrationSchema = z
   .object({ number: z.number().int().positive(), email: z.email() })
   .openapi('TeamRegistration');

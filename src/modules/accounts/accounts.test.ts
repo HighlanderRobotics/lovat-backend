@@ -362,6 +362,23 @@ describe('accounts module', () => {
     });
   });
 
+  it('returns the approved team code only to scouting leads', async () => {
+    const app = createApp(dependencies);
+    expect(
+      (
+        await app.request('/v2/accounts/team/code', {
+          headers: { authorization: 'Bearer valid-token' },
+        })
+      ).status
+    ).toBe(403);
+    storedAccount = { ...storedAccount!, role: 'SCOUTING_LEAD' };
+    const response = await app.request('/v2/accounts/team/code', {
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ code: 'ABC123' });
+  });
+
   it('starts registration and promotes the requesting account', async () => {
     const response = await createApp(dependencies).request('/v2/accounts/team/registration', {
       method: 'POST',

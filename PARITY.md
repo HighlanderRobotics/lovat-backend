@@ -31,6 +31,7 @@ tests are present.
 - [x] Registered-team request, join-by-code, and registration status lifecycle
 - [ ] Signed email verification, approval/rejection callbacks, and notification delivery
 - [x] Public team-code validation and code-scoped active scouter roster
+- [x] Lead-only approved team-code retrieval
 - [x] Code-authenticated public scouter schedules with match/team/alliance assignments
 - [x] Code-authenticated public tournament catalog and scheduled-event views
 - [x] Lead-only team contact read and authenticated website persistence

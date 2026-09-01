@@ -82,6 +82,13 @@ export function createAccountsService(repository: AccountsRepository) {
       if (!team) throw new NotFound('Registered team not found');
       return { number: team.number, email: team.email, website: team.website };
     },
+    async getTeamCode(id: string) {
+      const account = await teamAccount(id, true);
+      const team = await repository.findRegisteredTeam(account.teamNumber!);
+      if (!team) throw new NotFound('Registered team not found');
+      if (!team.teamApproved) throw new Forbidden('The team is not approved');
+      return { code: team.code };
+    },
     async updateTeamWebsite(id: string, website: string | null) {
       const account = await repository.findById(id);
       if (!account) throw new NotFound('Account not found');

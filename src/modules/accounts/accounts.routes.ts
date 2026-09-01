@@ -14,6 +14,7 @@ import {
   TeamMemberSchema,
   TeamProfileSchema,
   TeamWebsiteUpdateSchema,
+  TeamCodeSchema,
   JoinTeamSchema,
   RegistrationStatusPathSchema,
   RegistrationStatusSchema,
@@ -192,6 +193,18 @@ const getTeamProfileRoute = createRoute({
     ...teamErrors,
   },
 });
+const getTeamCodeRoute = createRoute({
+  method: 'get',
+  path: '/team/code',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    200: {
+      description: 'Approved team code for mobile clients',
+      content: { 'application/json': { schema: TeamCodeSchema } },
+    },
+    ...teamErrors,
+  },
+});
 const updateTeamWebsiteRoute = createRoute({
   method: 'patch',
   path: '/team/website',
@@ -351,6 +364,9 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
   });
   router.openapi(getTeamProfileRoute, async (context) =>
     context.json(await dependencies.accounts.getTeamProfile(context.get('auth').userId), 200)
+  );
+  router.openapi(getTeamCodeRoute, async (context) =>
+    context.json(await dependencies.accounts.getTeamCode(context.get('auth').userId), 200)
   );
   router.openapi(updateTeamWebsiteRoute, async (context) => {
     assertDashboardIdentity(context.get('auth'));
