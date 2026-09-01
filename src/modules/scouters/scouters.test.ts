@@ -152,6 +152,7 @@ describe('scouters module', () => {
           return { teams: [], count: 0 };
         },
       },
+      mutablePicklists: unusedMutablePicklists,
       authenticator: {
         async authenticate(token) {
           const account = [analyst, lead, otherLead, unverified].find(({ id }) => id === token);
@@ -244,3 +245,21 @@ describe('scouters module', () => {
     expect(specification).not.toContain('scouterReliability');
   });
 });
+
+const unusedMutablePicklists = {
+  async list() {
+    return [];
+  },
+  async get() {
+    throw new Error('Not used by this test');
+  },
+  async create() {
+    throw new Error('Not used by this test');
+  },
+  async update() {
+    throw new Error('Not used by this test');
+  },
+  async delete() {
+    throw new Error('Not used by this test');
+  },
+};

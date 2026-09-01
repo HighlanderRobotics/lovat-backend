@@ -164,6 +164,7 @@ describe('api keys module', () => {
           throw new Error('Not used by this test');
         },
       },
+      mutablePicklists: unusedMutablePicklists,
       authenticator: {
         async authenticate(token) {
           const owner = [analyst, teammate, lead, outsider, unverified].find(
@@ -248,3 +249,21 @@ describe('api keys module', () => {
     expect(specification).not.toContain('keyHash');
   });
 });
+
+const unusedMutablePicklists = {
+  async list() {
+    return [];
+  },
+  async get() {
+    throw new Error('Not used by this test');
+  },
+  async create() {
+    throw new Error('Not used by this test');
+  },
+  async update() {
+    throw new Error('Not used by this test');
+  },
+  async delete() {
+    throw new Error('Not used by this test');
+  },
+};

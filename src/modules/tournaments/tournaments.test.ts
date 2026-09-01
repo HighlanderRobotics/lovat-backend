@@ -145,6 +145,7 @@ describe('tournaments module', () => {
           throw new Error('Not used by this test');
         },
       },
+      mutablePicklists: unusedMutablePicklists,
       authenticator: {
         async authenticate(token) {
           return token === 'valid-token'
@@ -236,3 +237,21 @@ describe('tournaments module', () => {
     expect(firstBody.data).toHaveLength(1);
   });
 });
+
+const unusedMutablePicklists = {
+  async list() {
+    return [];
+  },
+  async get() {
+    throw new Error('Not used by this test');
+  },
+  async create() {
+    throw new Error('Not used by this test');
+  },
+  async update() {
+    throw new Error('Not used by this test');
+  },
+  async delete() {
+    throw new Error('Not used by this test');
+  },
+};

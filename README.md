@@ -35,6 +35,7 @@ The health endpoint is available at `GET /v2/health`.
 - `GET /v2/tournaments/{key}/scouter-shifts`
 - `GET /v2/teams`
 - `GET /v2/scouters`, `POST /v2/scouters`, and `PATCH /v2/scouters/{uuid}`
+- `GET/POST /v2/mutable-picklists` and `GET/PUT/DELETE /v2/mutable-picklists/{uuid}`
 - `GET /v2/openapi.json`
 
 Dashboard routes require an Auth0 bearer token. API-key management additionally requires

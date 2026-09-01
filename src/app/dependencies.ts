@@ -4,6 +4,10 @@ import { createApiKeysRepository, createApiKeysService } from '../modules/api-ke
 import { createTournamentsRepository, createTournamentsService } from '../modules/tournaments';
 import { createTeamsRepository, createTeamsService } from '../modules/teams';
 import { createScoutersRepository, createScoutersService } from '../modules/scouters';
+import {
+  createMutablePicklistsRepository,
+  createMutablePicklistsService,
+} from '../modules/mutable-picklists';
 import { loadEnvironment } from '../platform/config/environment';
 import { createDatabase } from '../platform/database/client';
 import type { Authenticator } from '../platform/auth/types';
@@ -12,6 +16,7 @@ import type { ApiKeysService } from '../modules/api-keys';
 import type { TournamentsService } from '../modules/tournaments';
 import type { TeamsService } from '../modules/teams';
 import type { ScoutersService } from '../modules/scouters';
+import type { MutablePicklistsService } from '../modules/mutable-picklists';
 
 export type AppDependencies = {
   accounts: AccountsService;
@@ -19,6 +24,7 @@ export type AppDependencies = {
   tournaments: TournamentsService;
   teams: TeamsService;
   scouters: ScoutersService;
+  mutablePicklists: MutablePicklistsService;
   authenticator: Authenticator;
   apiVersion: string;
 };
@@ -31,6 +37,7 @@ export function createProductionDependencies(): AppDependencies {
   const tournamentsRepository = createTournamentsRepository(database);
   const teamsRepository = createTeamsRepository(database);
   const scoutersRepository = createScoutersRepository(database);
+  const mutablePicklistsRepository = createMutablePicklistsRepository(database);
 
   return {
     accounts: createAccountsService(accountsRepository),
@@ -38,6 +45,7 @@ export function createProductionDependencies(): AppDependencies {
     tournaments: createTournamentsService(tournamentsRepository),
     teams: createTeamsService(teamsRepository),
     scouters: createScoutersService(scoutersRepository),
+    mutablePicklists: createMutablePicklistsService(mutablePicklistsRepository),
     authenticator: createAuth0Authenticator(
       environment.AUTH0_DOMAIN,
       environment.AUTH0_AUDIENCE,

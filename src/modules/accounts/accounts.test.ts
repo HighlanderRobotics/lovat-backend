@@ -84,6 +84,7 @@ describe('accounts module', () => {
           throw new Error('Not used by this test');
         },
       },
+      mutablePicklists: unusedMutablePicklists,
       authenticator: {
         async authenticate(token) {
           return token === 'valid-token'
@@ -163,3 +164,21 @@ describe('accounts module', () => {
     expect(response.status).toBe(400);
   });
 });
+
+const unusedMutablePicklists = {
+  async list() {
+    return [];
+  },
+  async get() {
+    throw new Error('Not used by this test');
+  },
+  async create() {
+    throw new Error('Not used by this test');
+  },
+  async update() {
+    throw new Error('Not used by this test');
+  },
+  async delete() {
+    throw new Error('Not used by this test');
+  },
+};
