@@ -256,6 +256,18 @@ const joinTeamRoute = createRoute({
     ...teamErrors,
   },
 });
+const leaveTeamRoute = createRoute({
+  method: 'post',
+  path: '/team/leave',
+  security: [{ DashboardAuth: [] }],
+  responses: {
+    200: {
+      description: 'Account removed from its team and reset to analyst',
+      content: { 'application/json': { schema: AccountResponseSchema } },
+    },
+    ...teamErrors,
+  },
+});
 const registrationStatusRoute = createRoute({
   method: 'get',
   path: '/team/{number}/registration-status',
@@ -394,6 +406,21 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
       context.get('auth').userId,
       context.req.valid('json')
     );
+    return context.json(
+      {
+        id: account.id,
+        teamNumber: account.teamNumber,
+        email: account.email,
+        emailVerified: account.emailVerified,
+        username: account.username,
+        role: account.role,
+      },
+      200
+    );
+  });
+  router.openapi(leaveTeamRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
+    const account = await dependencies.accounts.leaveTeam(context.get('auth').userId);
     return context.json(
       {
         id: account.id,

@@ -37,6 +37,7 @@ tests are present.
 - [x] Lead-only team contact read and authenticated website persistence
 - [ ] Team email change initiation and verification delivery
 - [x] Verified-team user list, analyst list, and scouting-lead promotion
+- [x] Authenticated team departure with analyst-role reset
 
 ## Remaining analysis work
 

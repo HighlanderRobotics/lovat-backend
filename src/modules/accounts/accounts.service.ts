@@ -136,6 +136,11 @@ export function createAccountsService(repository: AccountsRepository) {
       if (!updated) throw new NotFound('Account not found');
       return updated;
     },
+    async leaveTeam(id: string) {
+      const updated = await repository.leaveTeam(id);
+      if (!updated) throw new NotFound('Account not found');
+      return updated;
+    },
     async getRegistrationStatus(id: string, teamNumber: number) {
       const [account, team] = await Promise.all([
         repository.findById(id),

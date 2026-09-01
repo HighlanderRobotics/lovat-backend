@@ -148,6 +148,9 @@ describe('scouters module', () => {
         async joinTeam() {
           throw new Error('Not used by this test');
         },
+        async leaveTeam() {
+          throw new Error('Not used by this test');
+        },
         async getRegistrationStatus() {
           return { status: 'NOT_STARTED' as const };
         },

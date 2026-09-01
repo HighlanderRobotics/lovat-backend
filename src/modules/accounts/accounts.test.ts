@@ -132,6 +132,11 @@ describe('accounts module', () => {
         }
         return null;
       },
+      async leaveTeam(userId) {
+        if (storedAccount?.id !== userId) return null;
+        storedAccount = { ...storedAccount, teamNumber: null, role: 'ANALYST' };
+        return storedAccount;
+      },
     };
 
     dependencies = {
@@ -406,6 +411,19 @@ describe('accounts module', () => {
 
     expect(response.status).toBe(200);
     expect(((await response.json()) as { teamNumber: number }).teamNumber).toBe(8033);
+  });
+
+  it('leaves a team and resets the account role', async () => {
+    storedAccount = { ...storedAccount!, role: 'SCOUTING_LEAD' };
+    const response = await createApp(dependencies).request('/v2/accounts/team/leave', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-token' },
+    });
+    expect(response.status).toBe(200);
+    expect((await response.json()) as unknown).toMatchObject({
+      teamNumber: null,
+      role: 'ANALYST',
+    });
   });
 
   it('reports the registration lifecycle without exposing the team code', async () => {

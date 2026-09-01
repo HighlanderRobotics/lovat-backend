@@ -36,6 +36,7 @@ export interface AccountsRepository {
     teamApproved: boolean;
   }): Promise<RegisteredTeam>;
   joinTeam(userId: string, teamNumber: number): Promise<Account | null>;
+  leaveTeam(userId: string): Promise<Account | null>;
 }
 
 export function createAccountsRepository(database: Database): AccountsRepository {
@@ -168,6 +169,14 @@ export function createAccountsRepository(database: Database): AccountsRepository
       const [account] = await database
         .update(users)
         .set({ teamNumber })
+        .where(eq(users.id, userId))
+        .returning();
+      return account ?? null;
+    },
+    async leaveTeam(userId) {
+      const [account] = await database
+        .update(users)
+        .set({ teamNumber: null, role: 'ANALYST' })
         .where(eq(users.id, userId))
         .returning();
       return account ?? null;
