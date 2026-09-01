@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
-import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import { assertDashboardIdentity, bearerAuth } from '../../platform/auth/bearer-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest, handleErrors } from '../../platform/http/errors';
@@ -109,7 +109,7 @@ export function createMutablePicklistsRouter(dependencies: {
     },
   });
   router.onError(handleErrors);
-  router.use('*', dashboardAuth(dependencies.authenticator));
+  router.use('*', bearerAuth(dependencies.authenticator));
   router.openapi(listRoute, async (c) =>
     c.json({ picklists: await dependencies.mutablePicklists.list(c.get('auth').userId) }, 200)
   );
@@ -121,16 +121,18 @@ export function createMutablePicklistsRouter(dependencies: {
       200
     )
   );
-  router.openapi(createPicklistRoute, async (c) =>
-    c.json(
+  router.openapi(createPicklistRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
+    return c.json(
       publicPicklist(
         await dependencies.mutablePicklists.create(c.get('auth').userId, c.req.valid('json'))
       ),
       201
-    )
-  );
-  router.openapi(updateRoute, async (c) =>
-    c.json(
+    );
+  });
+  router.openapi(updateRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
+    return c.json(
       publicPicklist(
         await dependencies.mutablePicklists.update(
           c.get('auth').userId,
@@ -139,9 +141,10 @@ export function createMutablePicklistsRouter(dependencies: {
         )
       ),
       200
-    )
-  );
+    );
+  });
   router.openapi(deleteRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
     await dependencies.mutablePicklists.delete(c.get('auth').userId, c.req.valid('param').uuid);
     return c.body(null, 204);
   });

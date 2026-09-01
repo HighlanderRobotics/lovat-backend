@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
-import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import { assertDashboardIdentity, bearerAuth } from '../../platform/auth/bearer-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest } from '../../platform/http/errors';
@@ -226,7 +226,7 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
       200
     )
   );
-  router.use('*', dashboardAuth(dependencies.authenticator));
+  router.use('*', bearerAuth(dependencies.authenticator));
 
   router.openapi(listTournamentsRoute, async (context) => {
     const query = context.req.valid('query');
@@ -259,17 +259,19 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
     );
     return context.json(schedule, 200);
   });
-  router.openapi(createShiftRoute, async (c) =>
-    c.json(
+  router.openapi(createShiftRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
+    return c.json(
       await dependencies.tournaments.createScouterShift(
         c.get('auth').userId,
         c.req.valid('param').key,
         c.req.valid('json')
       ),
       201
-    )
-  );
+    );
+  });
   router.openapi(updateShiftRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
     const { key, uuid } = c.req.valid('param');
     await dependencies.tournaments.updateScouterShift(
       c.get('auth').userId,
@@ -280,6 +282,7 @@ export function createTournamentsRouter(dependencies: TournamentsRouteDependenci
     return c.body(null, 204);
   });
   router.openapi(deleteShiftRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
     const { key, uuid } = c.req.valid('param');
     await dependencies.tournaments.deleteScouterShift(c.get('auth').userId, key, uuid);
     return c.body(null, 204);

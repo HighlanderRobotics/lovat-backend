@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnvironment } from '../../app/context';
-import { Unauthorized } from '../http/errors';
+import { Forbidden, Unauthorized } from '../http/errors';
 import type { Authenticator } from './types';
 
 export function bearerAuth(authenticator: Authenticator): MiddlewareHandler<AppEnvironment> {
@@ -14,4 +14,9 @@ export function bearerAuth(authenticator: Authenticator): MiddlewareHandler<AppE
     context.set('auth', identity);
     await next();
   };
+}
+
+export function assertDashboardIdentity(identity: AppEnvironment['Variables']['auth']) {
+  if (identity.tokenType !== 'jwt')
+    throw new Forbidden('This action cannot be performed using an API key');
 }

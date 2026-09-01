@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
-import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import { assertDashboardIdentity, bearerAuth } from '../../platform/auth/bearer-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest } from '../../platform/http/errors';
@@ -211,7 +211,7 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
       if (!result.success) throw new BadRequest();
     },
   });
-  router.use('*', dashboardAuth(dependencies.authenticator));
+  router.use('*', bearerAuth(dependencies.authenticator));
 
   router.openapi(getCurrentAccountRoute, async (context) => {
     const identity = context.get('auth');
@@ -231,6 +231,7 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
 
   router.openapi(deleteCurrentAccountRoute, async (context) => {
     const identity = context.get('auth');
+    assertDashboardIdentity(identity);
     assertCanDeleteAccount(identity, identity.userId);
     await dependencies.accounts.delete(identity.userId);
     return context.body(null, 204);
@@ -249,6 +250,7 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
   });
 
   router.openapi(updateAccountSettingsRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
     const account = await dependencies.accounts.updateSettings(
       context.get('auth').userId,
       context.req.valid('json')
@@ -284,6 +286,7 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
     )
   );
   router.openapi(promoteScoutingLeadRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
     const account = await dependencies.accounts.promoteToScoutingLead(
       context.get('auth').userId,
       context.req.valid('json').userId
@@ -293,15 +296,16 @@ export function createAccountsRouter(dependencies: AccountsRouteDependencies) {
   router.openapi(getTeamProfileRoute, async (context) =>
     context.json(await dependencies.accounts.getTeamProfile(context.get('auth').userId), 200)
   );
-  router.openapi(updateTeamWebsiteRoute, async (context) =>
-    context.json(
+  router.openapi(updateTeamWebsiteRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
+    return context.json(
       await dependencies.accounts.updateTeamWebsite(
         context.get('auth').userId,
         context.req.valid('json').website
       ),
       200
-    )
-  );
+    );
+  });
 
   return router;
 }

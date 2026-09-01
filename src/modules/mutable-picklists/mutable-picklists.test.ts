@@ -53,8 +53,11 @@ describe('mutable picklists module', () => {
       mutablePicklists: createMutablePicklistsService(repository),
       authenticator: {
         async authenticate(token) {
-          const user = users.get(token);
-          return user ? { userId: user.id, role: 'ANALYST', tokenType: 'jwt' } : null;
+          const isApiKey = token.startsWith('api-');
+          const user = users.get(isApiKey ? token.slice(4) : token);
+          return user
+            ? { userId: user.id, role: 'ANALYST', tokenType: isApiKey ? 'apiKey' : 'jwt' }
+            : null;
         },
       },
     });
@@ -113,5 +116,25 @@ describe('mutable picklists module', () => {
       body: JSON.stringify({ name: 'Safe', teams: [] }),
     });
     expect(await created.text()).not.toContain('authorId');
+  });
+
+  it('allows API-key reads but rejects API-key mutations', async () => {
+    await router.request('/', {
+      method: 'POST',
+      headers: { authorization: 'Bearer owner', 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Readable', teams: [8033] }),
+    });
+    const listed = await router.request('/', {
+      headers: { authorization: 'Bearer api-owner' },
+    });
+    expect(listed.status).toBe(200);
+    expect(((await listed.json()) as { picklists: unknown[] }).picklists).toHaveLength(1);
+    const blocked = await router.request('/', {
+      method: 'POST',
+      headers: { authorization: 'Bearer api-owner', 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Blocked', teams: [] }),
+    });
+    expect(blocked.status).toBe(403);
+    expect(rows.size).toBe(1);
   });
 });

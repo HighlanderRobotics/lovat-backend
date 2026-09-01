@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
-import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import { assertDashboardIdentity, bearerAuth } from '../../platform/auth/bearer-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest } from '../../platform/http/errors';
@@ -103,7 +103,7 @@ export function createApiKeysRouter(dependencies: ApiKeysRouteDependencies) {
       if (!result.success) throw new BadRequest();
     },
   });
-  router.use('*', dashboardAuth(dependencies.authenticator));
+  router.use('*', bearerAuth(dependencies.authenticator));
 
   router.openapi(listApiKeysRoute, async (context) => {
     const apiKeys = await dependencies.apiKeys.list(context.get('auth').userId);
@@ -111,12 +111,14 @@ export function createApiKeysRouter(dependencies: ApiKeysRouteDependencies) {
   });
 
   router.openapi(createApiKeyRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
     const { name } = context.req.valid('json');
     const apiKey = await dependencies.apiKeys.create(context.get('auth').userId, name);
     return context.json({ apiKey }, 201);
   });
 
   router.openapi(renameApiKeyRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
     const { uuid } = context.req.valid('param');
     const { name } = context.req.valid('json');
     await dependencies.apiKeys.rename(context.get('auth').userId, uuid, name);
@@ -124,6 +126,7 @@ export function createApiKeysRouter(dependencies: ApiKeysRouteDependencies) {
   });
 
   router.openapi(revokeApiKeyRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
     const { uuid } = context.req.valid('param');
     await dependencies.apiKeys.revoke(context.get('auth').userId, uuid);
     return context.body(null, 204);

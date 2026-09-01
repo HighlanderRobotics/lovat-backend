@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
-import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import { assertDashboardIdentity, bearerAuth } from '../../platform/auth/bearer-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest, handleErrors } from '../../platform/http/errors';
@@ -121,27 +121,33 @@ export function createScoutReportsRouter(dependencies: {
   router.openapi(createPublicReportRoute, async (c) =>
     c.json(await dependencies.scoutReports.createPublic(c.req.valid('json')), 201)
   );
-  router.use('*', dashboardAuth(dependencies.authenticator));
+  router.use('*', bearerAuth(dependencies.authenticator));
   router.openapi(getRoute, async (c) =>
     c.json(
       await dependencies.scoutReports.get(c.get('auth').userId, c.req.valid('param').uuid),
       200
     )
   );
-  router.openapi(createReportRoute, async (c) =>
-    c.json(await dependencies.scoutReports.create(c.get('auth').userId, c.req.valid('json')), 201)
-  );
-  router.openapi(notesRoute, async (c) =>
-    c.json(
+  router.openapi(createReportRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
+    return c.json(
+      await dependencies.scoutReports.create(c.get('auth').userId, c.req.valid('json')),
+      201
+    );
+  });
+  router.openapi(notesRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
+    return c.json(
       await dependencies.scoutReports.updateNotes(
         c.get('auth').userId,
         c.req.valid('param').uuid,
         c.req.valid('json').note
       ),
       200
-    )
-  );
+    );
+  });
   router.openapi(deleteRoute, async (c) => {
+    assertDashboardIdentity(c.get('auth'));
     await dependencies.scoutReports.delete(c.get('auth').userId, c.req.valid('param').uuid);
     return c.body(null, 204);
   });

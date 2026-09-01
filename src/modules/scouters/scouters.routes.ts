@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { AppEnvironment } from '../../app/context';
-import { dashboardAuth } from '../../platform/auth/dashboard-auth';
+import { assertDashboardIdentity, bearerAuth } from '../../platform/auth/bearer-auth';
 import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest } from '../../platform/http/errors';
@@ -123,7 +123,7 @@ export function createScoutersRouter(dependencies: ScoutersRouteDependencies) {
       200
     )
   );
-  router.use('*', dashboardAuth(dependencies.authenticator));
+  router.use('*', bearerAuth(dependencies.authenticator));
 
   router.openapi(listScoutersRoute, async (context) => {
     const { archived } = context.req.valid('query');
@@ -132,12 +132,14 @@ export function createScoutersRouter(dependencies: ScoutersRouteDependencies) {
   });
 
   router.openapi(createScouterRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
     const { name } = context.req.valid('json');
     const scouter = await dependencies.scouters.create(context.get('auth').userId, name);
     return context.json(scouter, 201);
   });
 
   router.openapi(updateScouterRoute, async (context) => {
+    assertDashboardIdentity(context.get('auth'));
     const { uuid } = context.req.valid('param');
     const changes = context.req.valid('json');
     const scouter = await dependencies.scouters.update(context.get('auth').userId, uuid, changes);

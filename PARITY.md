@@ -55,7 +55,7 @@ tests are present.
 - [ ] Email verification delivery and resend throttling
 - [ ] Scheduled imports, cleanup jobs, and deployment-time jobs
 - [x] Hashed API-key authentication, usage accounting, and read-only team catalog access
-- [ ] API-key access on the remaining legacy-compatible read endpoints
+- [x] API-key access across migrated legacy-compatible reads with explicit JWT-only mutation guards
 - [ ] PostHog request analytics
 
 ## Final parity gate
