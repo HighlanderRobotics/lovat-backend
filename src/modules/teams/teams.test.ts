@@ -43,6 +43,11 @@ describe('teams module', () => {
 
   beforeEach(() => {
     dependencies = {
+      analysis: {
+        async categoryMetrics() {
+          throw new Error('Not used by this test');
+        },
+      },
       teams: createTeamsService(createMemoryRepository()),
       accounts: {
         async getRequired() {

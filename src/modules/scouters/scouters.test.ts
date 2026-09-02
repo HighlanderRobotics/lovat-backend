@@ -113,6 +113,11 @@ describe('scouters module', () => {
   beforeEach(() => {
     memory = createMemoryRepository();
     dependencies = {
+      analysis: {
+        async categoryMetrics() {
+          throw new Error('Not used by this test');
+        },
+      },
       scouters: createScoutersService(memory.repository),
       accounts: {
         async getRequired() {

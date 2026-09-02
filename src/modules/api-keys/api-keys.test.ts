@@ -135,6 +135,11 @@ describe('api keys module', () => {
     memory = createMemoryRepository();
     const apiKeys = createApiKeysService(memory.repository);
     dependencies = {
+      analysis: {
+        async categoryMetrics() {
+          throw new Error('Not used by this test');
+        },
+      },
       apiKeys,
       accounts: {
         async getRequired() {

@@ -140,6 +140,11 @@ describe('accounts module', () => {
     };
 
     dependencies = {
+      analysis: {
+        async categoryMetrics() {
+          throw new Error('Not used by this test');
+        },
+      },
       accounts: createAccountsService(repository),
       apiKeys: {
         async list() {

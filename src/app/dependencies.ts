@@ -30,6 +30,8 @@ import {
 import type { SharedPicklistsService } from '../modules/shared-picklists';
 import { createCompositeAuthenticator } from '../platform/auth/composite-authenticator';
 import { createTbaClient } from '../integrations/tba/tba-client';
+import { createAnalysisRepository, createAnalysisService } from '../modules/analysis';
+import type { AnalysisService } from '../modules/analysis';
 
 export type AppDependencies = {
   accounts: AccountsService;
@@ -40,6 +42,7 @@ export type AppDependencies = {
   mutablePicklists: MutablePicklistsService;
   scoutReports: ScoutReportsService;
   sharedPicklists: SharedPicklistsService;
+  analysis: AnalysisService;
   authenticator: Authenticator;
   apiVersion: string;
 };
@@ -55,6 +58,7 @@ export function createProductionDependencies(): AppDependencies {
   const mutablePicklistsRepository = createMutablePicklistsRepository(database);
   const scoutReportsRepository = createScoutReportsRepository(database);
   const sharedPicklistsRepository = createSharedPicklistsRepository(database);
+  const analysisRepository = createAnalysisRepository(database);
   const dashboardAuthenticator = createAuth0Authenticator(
     environment.AUTH0_DOMAIN,
     environment.AUTH0_AUDIENCE,
@@ -73,6 +77,7 @@ export function createProductionDependencies(): AppDependencies {
     mutablePicklists: createMutablePicklistsService(mutablePicklistsRepository),
     scoutReports: createScoutReportsService(scoutReportsRepository),
     sharedPicklists: createSharedPicklistsService(sharedPicklistsRepository),
+    analysis: createAnalysisService(analysisRepository),
     authenticator: createCompositeAuthenticator(
       dashboardAuthenticator,
       createApiKeyAuthenticator(apiKeysRepository)

@@ -9,6 +9,7 @@ import { createScoutersRouter } from '../modules/scouters';
 import { createMutablePicklistsRouter } from '../modules/mutable-picklists';
 import { createScoutReportsRouter } from '../modules/scout-reports';
 import { createSharedPicklistsRouter } from '../modules/shared-picklists';
+import { createAnalysisRouter } from '../modules/analysis';
 import { handleErrors } from '../platform/http/errors';
 import { requestId } from '../platform/http/request-id';
 
@@ -78,6 +79,14 @@ export function createApp(dependencies: AppDependencies) {
     '/v2/scouters',
     createScoutersRouter({
       scouters: dependencies.scouters,
+      authenticator: dependencies.authenticator,
+    })
+  );
+
+  app.route(
+    '/v2/analysis',
+    createAnalysisRouter({
+      analysis: dependencies.analysis,
       authenticator: dependencies.authenticator,
     })
   );

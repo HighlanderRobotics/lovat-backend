@@ -293,6 +293,11 @@ describe('tournaments module', () => {
 
   beforeEach(() => {
     dependencies = {
+      analysis: {
+        async categoryMetrics() {
+          throw new Error('Not used by this test');
+        },
+      },
       tournaments: createTournamentsService(createMemoryRepository(), {
         async getTeamEventStatus(key, teamNumber) {
           if (key !== '2026alpha' || teamNumber !== 8033) throw new Error('Unexpected TBA request');

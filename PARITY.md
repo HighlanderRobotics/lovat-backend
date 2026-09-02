@@ -46,6 +46,8 @@ tests are present.
 ## Remaining analysis work
 
 - [ ] Core team and multi-team metric analysis
+- [x] Team category metrics with source-rule filtering, per-match scout averaging, and tournament
+      recency weighting
 - [ ] Team lookup details, categories, breakdowns, notes, and flags
 - [ ] Match and alliance predictions
 - [ ] Qualification ranking predictions
