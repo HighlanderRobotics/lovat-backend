@@ -61,6 +61,22 @@ export function createScoutersService(repository: ScoutersRepository) {
       if (!updated) throw new NotFound('Scouter not found');
       return updated;
     },
+    async progress(userId: string, options: { archived?: boolean; tournamentKey?: string }) {
+      const account = await getAccount(userId);
+      const teamNumber = requireVerifiedTeam(account);
+      requireScoutingLead(account);
+      return repository.progress(teamNumber, options.archived, options.tournamentKey);
+    },
+    async reports(userId: string, uuid: string, tournamentKey?: string) {
+      const account = await getAccount(userId);
+      const teamNumber = requireVerifiedTeam(account);
+      requireScoutingLead(account);
+      const scouter = await repository.findById(uuid);
+      if (!scouter) throw new NotFound('Scouter not found');
+      if (scouter.sourceTeamNumber !== teamNumber)
+        throw new Forbidden('You cannot view another team’s scouter reports');
+      return repository.listReports(uuid, tournamentKey);
+    },
   };
 }
 

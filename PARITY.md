@@ -57,7 +57,7 @@ tests are present.
 - [x] Match and alliance predictions
 - [x] Qualification ranking predictions
 - [x] Picklist analysis and z-score ranking
-- [ ] Scouting-lead progress and report quality views
+- [x] Scouting-lead progress and report quality views
 - [ ] CSV team and scout-report exports
 - [ ] Pit display
 

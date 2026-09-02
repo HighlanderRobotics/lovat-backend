@@ -49,3 +49,35 @@ export const ScouterUpdateBodySchema = ScouterUpdateSchema.pick({ name: true, ar
     message: 'At least one change is required',
   })
   .openapi('ScouterUpdateBody');
+
+export const ScouterProgressQuerySchema = ScouterListQuerySchema.extend({
+  tournamentKey: z.string().trim().min(1).optional(),
+});
+export const ScouterProgressSchema = z
+  .array(
+    z.object({
+      scouterUuid: z.uuid(),
+      scouterName: z.string().nullable(),
+      matchesScouted: z.number().int().nonnegative(),
+      missedMatches: z.number().int().nonnegative(),
+    })
+  )
+  .openapi('ScouterProgress');
+export const ScouterReportsQuerySchema = z.object({
+  tournamentKey: z.string().trim().min(1).optional(),
+});
+export const ScouterReportSummariesSchema = z
+  .array(
+    z.object({
+      uuid: z.uuid(),
+      scouter: z.object({ name: z.string().nullable() }),
+      teamMatchData: z.object({
+        teamNumber: z.number().int().positive(),
+        key: z.string(),
+        matchNumber: z.number().int().positive(),
+        matchType: z.enum(['QUALIFICATION', 'ELIMINATION']),
+        tournament: z.object({ key: z.string(), name: z.string() }),
+      }),
+    })
+  )
+  .openapi('ScouterReportSummaries');

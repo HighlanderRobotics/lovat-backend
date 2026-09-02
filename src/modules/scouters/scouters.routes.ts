@@ -11,6 +11,10 @@ import {
   ScouterPathSchema,
   ScouterPublicSchema,
   ScouterUpdateBodySchema,
+  ScouterProgressQuerySchema,
+  ScouterProgressSchema,
+  ScouterReportsQuerySchema,
+  ScouterReportSummariesSchema,
   TeamCodeCheckResponseSchema,
   TeamCodeHeaderSchema,
   TeamCodeQuerySchema,
@@ -103,6 +107,32 @@ const updateScouterRoute = createRoute({
     ...sharedErrors,
   },
 });
+const progressRoute = createRoute({
+  method: 'get',
+  path: '/progress',
+  security: [{ DashboardAuth: [] }],
+  request: { query: ScouterProgressQuerySchema },
+  responses: {
+    200: {
+      description: 'Scouting-lead report completion and missed-assignment progress',
+      content: { 'application/json': { schema: ScouterProgressSchema } },
+    },
+    ...sharedErrors,
+  },
+});
+const reportsRoute = createRoute({
+  method: 'get',
+  path: '/{uuid}/reports',
+  security: [{ DashboardAuth: [] }],
+  request: { params: ScouterPathSchema, query: ScouterReportsQuerySchema },
+  responses: {
+    200: {
+      description: 'A team scouter’s report history',
+      content: { 'application/json': { schema: ScouterReportSummariesSchema } },
+    },
+    ...sharedErrors,
+  },
+});
 
 export function createScoutersRouter(dependencies: ScoutersRouteDependencies) {
   const router = new OpenAPIHono<AppEnvironment>({
@@ -129,6 +159,26 @@ export function createScoutersRouter(dependencies: ScoutersRouteDependencies) {
     const { archived } = context.req.valid('query');
     const scouters = await dependencies.scouters.list(context.get('auth').userId, archived);
     return context.json({ scouters }, 200);
+  });
+
+  router.openapi(progressRoute, async (context) => {
+    const query = context.req.valid('query');
+    return context.json(
+      await dependencies.scouters.progress(context.get('auth').userId, query),
+      200
+    );
+  });
+
+  router.openapi(reportsRoute, async (context) => {
+    const query = context.req.valid('query');
+    return context.json(
+      await dependencies.scouters.reports(
+        context.get('auth').userId,
+        context.req.valid('param').uuid,
+        query.tournamentKey
+      ),
+      200
+    );
   });
 
   router.openapi(createScouterRoute, async (context) => {

@@ -84,6 +84,37 @@ function createMemoryRepository() {
     async findTeamNumberByCode(code) {
       return code === 'team-8033' ? 8033 : null;
     },
+    async progress(teamNumber, archived, tournamentKey) {
+      return [...records.values()]
+        .filter(
+          (scouter) =>
+            scouter.sourceTeamNumber === teamNumber &&
+            (archived === undefined || scouter.archived === archived)
+        )
+        .map((scouter) => ({
+          scouterUuid: scouter.uuid,
+          scouterName: scouter.name,
+          matchesScouted: tournamentKey ? 2 : 3,
+          missedMatches: tournamentKey ? 1 : 0,
+        }));
+    },
+    async listReports(scouterUuid, tournamentKey) {
+      return records.has(scouterUuid)
+        ? [
+            {
+              uuid: '00000000-0000-4000-8000-000000000099',
+              scouter: { name: records.get(scouterUuid)!.name },
+              teamMatchData: {
+                teamNumber: 8033,
+                key: `${tournamentKey ?? '2026test'}_qm1_0`,
+                matchNumber: 1,
+                matchType: 'QUALIFICATION',
+                tournament: { key: tournamentKey ?? '2026test', name: 'Test Regional' },
+              },
+            },
+          ]
+        : [];
+    },
   };
 
   function addScouter(teamNumber: number, name: string, archived = false) {
@@ -317,6 +348,56 @@ describe('scouters module', () => {
       headers: { authorization: 'Bearer unverified' },
     });
     expect(response.status).toBe(403);
+  });
+
+  it('gives scouting leads progress and report-history views for their own team', async () => {
+    const uuid = memory.addScouter(8033, 'Scout');
+    const app = createApp(dependencies);
+    const progress = await app.request(
+      '/v2/scouters/progress?tournamentKey=2026test&archived=false',
+      { headers: { authorization: 'Bearer lead' } }
+    );
+    expect(progress.status).toBe(200);
+    expect(await progress.json()).toEqual([
+      {
+        scouterUuid: uuid,
+        scouterName: 'Scout',
+        matchesScouted: 2,
+        missedMatches: 1,
+      },
+    ]);
+    const reports = await app.request(`/v2/scouters/${uuid}/reports?tournamentKey=2026test`, {
+      headers: { authorization: 'Bearer lead' },
+    });
+    expect(reports.status).toBe(200);
+    expect(await reports.json()).toEqual([
+      {
+        uuid: '00000000-0000-4000-8000-000000000099',
+        scouter: { name: 'Scout' },
+        teamMatchData: {
+          teamNumber: 8033,
+          key: '2026test_qm1_0',
+          matchNumber: 1,
+          matchType: 'QUALIFICATION',
+          tournament: { key: '2026test', name: 'Test Regional' },
+        },
+      },
+    ]);
+    expect(
+      (
+        await app.request('/v2/scouters/progress', {
+          headers: { authorization: 'Bearer analyst' },
+        })
+      ).status
+    ).toBe(403);
+    const otherUuid = memory.addScouter(254, 'Other');
+    expect(
+      (
+        await app.request(`/v2/scouters/${otherUuid}/reports`, {
+          headers: { authorization: 'Bearer lead' },
+        })
+      ).status
+    ).toBe(403);
   });
 
   it('rejects empty updates and publishes the roster contracts', async () => {

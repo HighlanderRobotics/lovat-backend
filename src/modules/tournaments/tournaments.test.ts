@@ -410,6 +410,12 @@ describe('tournaments module', () => {
         async update() {
           throw new Error('Not used by this test');
         },
+        async progress() {
+          throw new Error('Not used by this test');
+        },
+        async reports() {
+          throw new Error('Not used by this test');
+        },
       },
       mutablePicklists: unusedMutablePicklists,
       sharedPicklists: unusedMutablePicklists,
