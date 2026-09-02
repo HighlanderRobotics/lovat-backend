@@ -10,11 +10,27 @@ import type {
 import { createScoutReportsService } from './scout-reports.service';
 
 const accounts = new Map<string, ScoutReportAccount>([
-  ['analyst', { id: 'analyst', teamNumber: 8033, role: 'ANALYST', teamVerified: true }],
-  ['lead', { id: 'lead', teamNumber: 8033, role: 'SCOUTING_LEAD', teamVerified: true }],
-  ['other', { id: 'other', teamNumber: 254, role: 'SCOUTING_LEAD', teamVerified: true }],
-  ['unverified', { id: 'unverified', teamNumber: 254, role: 'ANALYST', teamVerified: false }],
+  ['analyst', accountRow('analyst', 8033, 'ANALYST', true)],
+  ['lead', accountRow('lead', 8033, 'SCOUTING_LEAD', true)],
+  ['other', accountRow('other', 254, 'SCOUTING_LEAD', true)],
+  ['unverified', accountRow('unverified', 254, 'ANALYST', false)],
 ]);
+
+function accountRow(
+  id: string,
+  teamNumber: number,
+  role: ScoutReportAccount['role'],
+  teamVerified: boolean
+): ScoutReportAccount {
+  return {
+    id,
+    teamNumber,
+    role,
+    teamVerified,
+    teamSourceRule: { mode: 'EXCLUDE', items: [] },
+    tournamentSourceRule: { mode: 'EXCLUDE', items: [] },
+  };
+}
 
 function createMemoryRepository() {
   const reports = new Map<string, ScoutReportRecord>();
@@ -58,6 +74,35 @@ function createMemoryRepository() {
           robotBrokeDescription: report.robotBrokeDescription,
           scouterName: report.scouterName,
           sourceTeamNumber: report.sourceTeamNumber,
+        }));
+    },
+    async teamExists(teamNumber) {
+      return teamNumber === 8033 || teamNumber === 254;
+    },
+    async countTeamReports(teamNumber) {
+      return [...reports.values()].filter(({ teamNumber: reportTeam }) => reportTeam === teamNumber)
+        .length;
+    },
+    async listTeamNotes(teamNumber, user) {
+      return [...reports.values()]
+        .filter(
+          (report) =>
+            report.teamNumber === teamNumber &&
+            report.notes !== '' &&
+            (user.teamSourceRule.mode === 'EXCLUDE'
+              ? !user.teamSourceRule.items.includes(report.sourceTeamNumber)
+              : user.teamSourceRule.items.includes(report.sourceTeamNumber)) &&
+            (user.tournamentSourceRule.mode === 'EXCLUDE'
+              ? !user.tournamentSourceRule.items.includes(report.tournamentKey)
+              : user.tournamentSourceRule.items.includes(report.tournamentKey))
+        )
+        .map((report) => ({
+          notes: report.notes,
+          robotBrokeDescription: report.robotBrokeDescription,
+          match: report.teamMatchKey,
+          tournamentName: report.tournamentName,
+          sourceTeam: report.sourceTeamNumber,
+          scouterName: report.scouterName,
         }));
     },
     async create(report, events) {
@@ -309,5 +354,25 @@ describe('scout reports module', () => {
       },
     });
     expect(metrics.autoPath.positions.map(({ event }) => event)).toEqual([2, 0, 1, 11]);
+  });
+
+  it('returns team notes with source filters and scouter-name privacy', async () => {
+    const service = createScoutReportsService(memory.repository);
+    await service.create('analyst', {
+      ...baseInput,
+      robotRoles: [...baseInput.robotRoles],
+      feederTypes: [...baseInput.feederTypes],
+    });
+    expect(await service.teamNotes('analyst', 9999)).toEqual({ error: 'TEAM_DOES_NOT_EXIST' });
+    expect(await service.teamNotes('analyst', 254)).toEqual({ error: 'NO_DATA_FOR_TEAM' });
+    expect(await service.teamNotes('lead', 8033)).toEqual([
+      expect.objectContaining({ notes: 'initial', scouterName: 'Scout', sourceTeam: 8033 }),
+    ]);
+    const outside = await service.teamNotes('other', 8033);
+    if (!Array.isArray(outside)) throw new Error('Expected team notes');
+    expect(outside[0]).not.toHaveProperty('scouterName');
+    accounts.get('other')!.teamSourceRule = { mode: 'EXCLUDE', items: [8033] };
+    expect(await service.teamNotes('other', 8033)).toEqual([]);
+    accounts.get('other')!.teamSourceRule = { mode: 'EXCLUDE', items: [] };
   });
 });

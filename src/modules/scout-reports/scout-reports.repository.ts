@@ -1,4 +1,4 @@
-import { and, asc, eq, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, notInArray, or, sql } from 'drizzle-orm';
 import type { Database } from '../../platform/database/client';
 import {
   cachedAnalyses,
@@ -7,6 +7,7 @@ import {
   scouters,
   scoutReports,
   teamMatchData,
+  teams,
   tournaments,
   users,
 } from '../../platform/database/schema';
@@ -15,6 +16,8 @@ export type ScoutReport = typeof scoutReports.$inferSelect;
 export type ScoutEvent = typeof events.$inferSelect;
 export type ScoutReportAccount = Pick<typeof users.$inferSelect, 'id' | 'teamNumber' | 'role'> & {
   teamVerified: boolean;
+  teamSourceRule: { mode: 'INCLUDE' | 'EXCLUDE'; items: number[] };
+  tournamentSourceRule: { mode: 'INCLUDE' | 'EXCLUDE'; items: string[] };
 };
 export type ScoutReportRecord = ScoutReport & {
   scouterName: string | null;
@@ -30,6 +33,14 @@ export type MatchScoutReportSummary = Pick<
   scouterName: string | null;
   sourceTeamNumber: number;
 };
+export type TeamNote = {
+  notes: string;
+  robotBrokeDescription: string | null;
+  match: string;
+  tournamentName: string;
+  sourceTeam: number;
+  scouterName: string | null;
+};
 
 export interface ScoutReportsRepository {
   findAccount(userId: string): Promise<ScoutReportAccount | null>;
@@ -43,6 +54,9 @@ export interface ScoutReportsRepository {
   findReport(uuid: string): Promise<ScoutReportRecord | null>;
   listEvents(uuid: string, ordered?: boolean): Promise<ScoutEvent[]>;
   listForMatch(teamMatchKey: string): Promise<MatchScoutReportSummary[]>;
+  teamExists(teamNumber: number): Promise<boolean>;
+  countTeamReports(teamNumber: number): Promise<number>;
+  listTeamNotes(teamNumber: number, account: ScoutReportAccount): Promise<TeamNote[]>;
   create(
     report: typeof scoutReports.$inferInsert,
     eventRows: (typeof events.$inferInsert)[],
@@ -79,6 +93,8 @@ export function createScoutReportsRepository(database: Database): ScoutReportsRe
           teamNumber: users.teamNumber,
           role: users.role,
           teamVerified: registeredTeams.emailVerified,
+          teamSourceRule: users.teamSourceRule,
+          tournamentSourceRule: users.tournamentSourceRule,
         })
         .from(users)
         .leftJoin(registeredTeams, eq(users.teamNumber, registeredTeams.number))
@@ -170,6 +186,66 @@ export function createScoutReportsRepository(database: Database): ScoutReportsRe
         .innerJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
         .where(eq(scoutReports.teamMatchKey, teamMatchKey))
         .orderBy(asc(scoutReports.startTime), asc(scoutReports.uuid));
+    },
+    async teamExists(teamNumber) {
+      const [row] = await database
+        .select({ number: teams.number })
+        .from(teams)
+        .where(eq(teams.number, teamNumber))
+        .limit(1);
+      return row !== undefined;
+    },
+    async countTeamReports(teamNumber) {
+      const [row] = await database
+        .select({ value: sql<number>`count(*)::int` })
+        .from(scoutReports)
+        .innerJoin(teamMatchData, eq(scoutReports.teamMatchKey, teamMatchData.key))
+        .where(eq(teamMatchData.teamNumber, teamNumber));
+      return row.value;
+    },
+    listTeamNotes(teamNumber, account) {
+      const sourceTeamFilter =
+        account.teamSourceRule.items.length === 0
+          ? account.teamSourceRule.mode === 'INCLUDE'
+            ? sql`false`
+            : undefined
+          : account.teamSourceRule.mode === 'INCLUDE'
+            ? inArray(scouters.sourceTeamNumber, account.teamSourceRule.items)
+            : notInArray(scouters.sourceTeamNumber, account.teamSourceRule.items);
+      const tournamentFilter =
+        account.tournamentSourceRule.items.length === 0
+          ? account.tournamentSourceRule.mode === 'INCLUDE'
+            ? sql`false`
+            : undefined
+          : account.tournamentSourceRule.mode === 'INCLUDE'
+            ? inArray(teamMatchData.tournamentKey, account.tournamentSourceRule.items)
+            : notInArray(teamMatchData.tournamentKey, account.tournamentSourceRule.items);
+      return database
+        .select({
+          notes: scoutReports.notes,
+          robotBrokeDescription: scoutReports.robotBrokeDescription,
+          match: scoutReports.teamMatchKey,
+          tournamentName: tournaments.name,
+          sourceTeam: scouters.sourceTeamNumber,
+          scouterName: scouters.name,
+        })
+        .from(scoutReports)
+        .innerJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
+        .innerJoin(teamMatchData, eq(scoutReports.teamMatchKey, teamMatchData.key))
+        .innerJoin(tournaments, eq(teamMatchData.tournamentKey, tournaments.key))
+        .where(
+          and(
+            eq(teamMatchData.teamNumber, teamNumber),
+            ne(scoutReports.notes, ''),
+            sourceTeamFilter,
+            tournamentFilter
+          )
+        )
+        .orderBy(
+          desc(tournaments.date),
+          desc(teamMatchData.matchType),
+          desc(teamMatchData.matchNumber)
+        );
     },
     create(report, eventRows, dependency) {
       return database.transaction(async (transaction) => {

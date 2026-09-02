@@ -467,6 +467,9 @@ const unusedMutablePicklists = {
   },
 };
 const unusedScoutReports = {
+  async teamNotes() {
+    return [];
+  },
   async metrics() {
     throw new Error('Not used by this test');
   },

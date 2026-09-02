@@ -14,6 +14,8 @@ import {
   MatchScoutReportsPathSchema,
   MatchScoutReportsSchema,
   ScoutReportMetricsSchema,
+  TeamNotesPathSchema,
+  TeamNotesSchema,
 } from './scout-reports.contracts';
 import type { ScoutReportsService } from './scout-reports.service';
 
@@ -136,6 +138,19 @@ const metricsRoute = createRoute({
     ...errors,
   },
 });
+const teamNotesRoute = createRoute({
+  method: 'get',
+  path: '/team/{teamNumber}/notes',
+  security: [{ DashboardAuth: [] }],
+  request: { params: TeamNotesPathSchema },
+  responses: {
+    200: {
+      description: 'Data-source-filtered notes for a team',
+      content: { 'application/json': { schema: TeamNotesSchema } },
+    },
+    ...errors,
+  },
+});
 
 export function createScoutReportsRouter(dependencies: {
   scoutReports: ScoutReportsService;
@@ -198,6 +213,15 @@ export function createScoutReportsRouter(dependencies: {
   router.openapi(metricsRoute, async (c) =>
     c.json(
       await dependencies.scoutReports.metrics(c.get('auth').userId, c.req.valid('param').uuid),
+      200
+    )
+  );
+  router.openapi(teamNotesRoute, async (c) =>
+    c.json(
+      await dependencies.scoutReports.teamNotes(
+        c.get('auth').userId,
+        c.req.valid('param').teamNumber
+      ),
       200
     )
   );

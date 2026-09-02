@@ -22,6 +22,7 @@ tests are present.
 - [x] Authenticated scout-report create/read/delete, legacy event timelines, and notes updates
 - [x] Match-scoped scout-report summaries with cross-team scouter masking and modification flags
 - [x] Report-specific legacy metrics and autonomous path analysis
+- [x] Team notes lookup with source-rule filtering and scouter privacy
 - [x] Legacy mobile scout-report upload with numeric event compatibility
 - [ ] On-demand match import and Slack break warnings during scout-report upload
 - [x] Database-backed match catalog, public match existence, source-aware report counts, and

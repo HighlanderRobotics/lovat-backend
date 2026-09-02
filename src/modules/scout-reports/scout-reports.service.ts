@@ -298,6 +298,20 @@ export function createScoutReportsService(repository: ScoutReportsRepository) {
         timeStamp: row.startTime,
       };
     },
+    async teamNotes(userId: string, teamNumber: number) {
+      const user = await account(userId);
+      if (!(await repository.teamExists(teamNumber)))
+        return { error: 'TEAM_DOES_NOT_EXIST' as const };
+      if ((await repository.countTeamReports(teamNumber)) === 0)
+        return { error: 'NO_DATA_FOR_TEAM' as const };
+      return (await repository.listTeamNotes(teamNumber, user)).map(
+        ({ scouterName, sourceTeam, ...note }) => ({
+          ...note,
+          sourceTeam,
+          ...(user.teamNumber === sourceTeam ? { scouterName } : {}),
+        })
+      );
+    },
   };
 }
 export type ScoutReportsService = ReturnType<typeof createScoutReportsService>;

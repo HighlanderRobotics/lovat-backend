@@ -119,3 +119,20 @@ export const ScoutReportMetricsSchema = z
     timeStamp: z.iso.datetime(),
   })
   .openapi('ScoutReportMetrics');
+export const TeamNotesPathSchema = z.object({
+  teamNumber: z.coerce.number().int().positive(),
+});
+const TeamNoteSchema = z.object({
+  notes: z.string(),
+  robotBrokeDescription: z.string().nullable(),
+  match: z.string(),
+  tournamentName: z.string(),
+  sourceTeam: z.number().int().positive(),
+  scouterName: z.string().nullable().optional(),
+});
+export const TeamNotesSchema = z
+  .union([
+    z.array(TeamNoteSchema),
+    z.object({ error: z.enum(['TEAM_DOES_NOT_EXIST', 'NO_DATA_FOR_TEAM']) }),
+  ])
+  .openapi('TeamNotes');
