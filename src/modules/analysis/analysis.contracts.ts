@@ -1,5 +1,5 @@
 import { z } from '@hono/zod-openapi';
-import { breakdownNames } from './analysis.service';
+import { breakdownNames, metricDetailNames } from './analysis.service';
 
 export const TeamCategoryPathSchema = z.object({
   teamNumber: z.coerce.number().int().positive(),
@@ -60,3 +60,40 @@ export const TeamFlagsQuerySchema = z.object({
   tournamentKey: z.string().trim().min(1).optional(),
 });
 export const TeamFlagsSchema = z.array(z.number().nullable()).openapi('TeamAnalysisFlags');
+
+export const TeamMetricPathSchema = TeamCategoryPathSchema.extend({
+  metric: z.enum(metricDetailNames),
+});
+const MetricTimelinePointSchema = z.object({
+  match: z.string(),
+  dataPoint: z.number(),
+  tournamentName: z.string(),
+});
+const AutoPathPositionSchema = z.object({
+  location: z.number().int().nonnegative(),
+  event: z.number().int().nonnegative(),
+  time: z.number(),
+  quantity: z.number().optional(),
+});
+export const TeamMetricDetailsSchema = z
+  .union([
+    z.object({
+      array: z.array(MetricTimelinePointSchema),
+      result: z.number(),
+      all: z.number(),
+      difference: z.number(),
+      team: z.number().int().positive(),
+    }),
+    z.object({
+      paths: z.array(
+        z.object({
+          positions: z.array(AutoPathPositionSchema),
+          matches: z.array(z.object({ matchKey: z.string(), tournamentName: z.string() })),
+          score: z.array(z.number()),
+          frequency: z.number().int().positive(),
+          maxScore: z.number(),
+        })
+      ),
+    }),
+  ])
+  .openapi('TeamMetricDetails');

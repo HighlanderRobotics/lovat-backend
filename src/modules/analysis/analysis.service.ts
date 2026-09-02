@@ -27,6 +27,12 @@ export const metricNames = [
 ] as const;
 export type CategoryMetric = (typeof metricNames)[number];
 export type CategoryMetrics = Record<CategoryMetric, number>;
+export const metricDetailNames = [
+  ...metricNames,
+  'scoringRate',
+  'totalBallThroughput',
+  'totalBallThroughPut',
+] as const;
 
 export const breakdownNames = [
   'robotRole',
@@ -234,6 +240,90 @@ function metricsForReports(reports: AnalysisReport[]) {
   ) as CategoryMetrics;
 }
 
+const actionNumber = {
+  START_SCORING: 0,
+  STOP_SCORING: 1,
+  START_MATCH: 2,
+  START_CAMPING: 3,
+  STOP_CAMPING: 4,
+  START_DEFENDING: 5,
+  STOP_DEFENDING: 6,
+  INTAKE: 7,
+  OUTTAKE: 8,
+  DISRUPT: 9,
+  CROSS: 10,
+  CLIMB: 11,
+  START_FEEDING: 12,
+  STOP_FEEDING: 13,
+} as const;
+const positionNumber = {
+  LEFT_TRENCH: 0,
+  LEFT_BUMP: 1,
+  HUB: 2,
+  RIGHT_TRENCH: 3,
+  RIGHT_BUMP: 4,
+  NEUTRAL_ZONE: 5,
+  DEPOT: 6,
+  OUTPOST: 7,
+  NONE: 8,
+} as const;
+
+function autoPaths(reports: AnalysisReport[]) {
+  type Position = { location: number; event: number; time: number; quantity?: number };
+  const groups: {
+    positions: Position[];
+    matches: { matchKey: string; tournamentName: string }[];
+    score: number[];
+    frequency: number;
+    maxScore: number;
+  }[] = [];
+  const sorted = [...reports].sort(
+    (left, right) =>
+      (right.tournamentDate ?? '').localeCompare(left.tournamentDate ?? '') ||
+      (left.matchType === right.matchType ? 0 : left.matchType === 'ELIMINATION' ? -1 : 1) ||
+      right.matchNumber - left.matchNumber
+  );
+  for (const report of sorted) {
+    const autoEvents = report.events.filter((event) => event.time <= 23);
+    if (autoEvents.length === 0) continue;
+    const positions = autoEvents.map((event) => ({
+      location: positionNumber[event.position],
+      event: actionNumber[event.action],
+      time: event.time,
+      ...(event.quantity === null ? {} : { quantity: event.quantity }),
+    }));
+    const score = autoEvents.reduce((total, event) => total + event.points, 0);
+    const group = groups.find((candidate) => {
+      const shorter =
+        positions.length > candidate.positions.length ? candidate.positions : positions;
+      const longer =
+        positions.length > candidate.positions.length ? positions : candidate.positions;
+      return shorter.every(
+        (position, index) =>
+          longer[index]?.event === position.event && longer[index]?.location === position.location
+      );
+    });
+    if (!group) {
+      groups.push({
+        positions,
+        matches: [{ matchKey: report.matchKey, tournamentName: report.tournamentName }],
+        score: [score],
+        frequency: 1,
+        maxScore: score,
+      });
+      continue;
+    }
+    if (positions.length > group.positions.length) group.positions = positions;
+    if (!group.matches.some(({ matchKey }) => matchKey === report.matchKey)) {
+      group.matches.push({ matchKey: report.matchKey, tournamentName: report.tournamentName });
+    }
+    group.score.push(score);
+    group.frequency += 1;
+    group.maxScore = Math.max(group.maxScore, score);
+  }
+  return groups;
+}
+
 export function createAnalysisService(repository: AnalysisRepository, tbaClient?: TbaClient) {
   async function teamReports(userId: string, teamNumber: number) {
     const account = await repository.findAccount(userId);
@@ -327,6 +417,27 @@ export function createAnalysisService(repository: AnalysisRepository, tbaClient?
         }
       }
       return values;
+    },
+    async metricDetails(userId: string, teamNumber: number, requestedMetric: string) {
+      const { account, reports } = await teamReports(userId, teamNumber);
+      if (requestedMetric === 'autoPoints') return { paths: autoPaths(reports) };
+      const alias =
+        requestedMetric === 'scoringRate'
+          ? 'fuelPerSecond'
+          : requestedMetric === 'totalBallThroughput' || requestedMetric === 'totalBallThroughPut'
+            ? 'totalFuelOutputted'
+            : requestedMetric;
+      const metric = alias as CategoryMetric;
+      const allReports = await repository.listAllReports(account);
+      const byMatch = Map.groupBy(reports, (report) => report.matchKey);
+      const array = [...byMatch.values()].map((matchReports) => ({
+        match: matchReports[0]!.matchKey,
+        dataPoint: matchMetric(metric, matchReports),
+        tournamentName: matchReports[0]!.tournamentName,
+      }));
+      const result = aggregate(metric, reports);
+      const all = aggregate(metric, allReports);
+      return { array, result, all, difference: result - all, team: teamNumber };
     },
   };
 }

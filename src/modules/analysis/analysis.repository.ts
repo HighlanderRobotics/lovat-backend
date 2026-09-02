@@ -46,6 +46,7 @@ export interface AnalysisRepository {
   teamExists(teamNumber: number): Promise<boolean>;
   countTeamReports(teamNumber: number): Promise<number>;
   listTeamReports(teamNumber: number, account: AnalysisAccount): Promise<AnalysisReport[]>;
+  listAllReports(account: AnalysisAccount): Promise<AnalysisReport[]>;
 }
 
 function teamSourceFilter(rule: AnalysisAccount['teamSourceRule']) {
@@ -63,6 +64,62 @@ function tournamentSourceFilter(rule: AnalysisAccount['tournamentSourceRule']) {
 }
 
 export function createAnalysisRepository(database: Database): AnalysisRepository {
+  async function listReports(teamNumber: number | null, account: AnalysisAccount) {
+    const rows = await database
+      .select({
+        uuid: scoutReports.uuid,
+        accuracy: scoutReports.accuracy,
+        autoClimb: scoutReports.autoClimb,
+        beached: scoutReports.beached,
+        disrupts: scoutReports.disrupts,
+        driverAbility: scoutReports.driverAbility,
+        defenseEffectiveness: scoutReports.defenseEffectiveness,
+        endgameClimb: scoutReports.endgameClimb,
+        feederTypes: scoutReports.feederTypes,
+        fieldTraversal: scoutReports.fieldTraversal,
+        intakeType: scoutReports.intakeType,
+        robotRoles: scoutReports.robotRoles,
+        scoresWhileMoving: scoutReports.scoresWhileMoving,
+        matchKey: teamMatchData.key,
+        tournamentKey: teamMatchData.tournamentKey,
+        tournamentDate: tournaments.date,
+        matchType: teamMatchData.matchType,
+        matchNumber: teamMatchData.matchNumber,
+        tournamentName: tournaments.name,
+        sourceTeamNumber: scouters.sourceTeamNumber,
+        scouterName: scouters.name,
+      })
+      .from(scoutReports)
+      .innerJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
+      .innerJoin(teamMatchData, eq(scoutReports.teamMatchKey, teamMatchData.key))
+      .innerJoin(tournaments, eq(teamMatchData.tournamentKey, tournaments.key))
+      .where(
+        and(
+          teamNumber === null ? undefined : eq(teamMatchData.teamNumber, teamNumber),
+          teamSourceFilter(account.teamSourceRule),
+          tournamentSourceFilter(account.tournamentSourceRule)
+        )
+      )
+      .orderBy(
+        asc(tournaments.date),
+        asc(teamMatchData.matchType),
+        asc(teamMatchData.matchNumber),
+        asc(scoutReports.uuid)
+      );
+    if (rows.length === 0) return [];
+    const eventRows = await database
+      .select()
+      .from(events)
+      .where(
+        inArray(
+          events.scoutReportUuid,
+          rows.map(({ uuid }) => uuid)
+        )
+      )
+      .orderBy(asc(events.time));
+    const eventsByReport = Map.groupBy(eventRows, (event) => event.scoutReportUuid);
+    return rows.map((row) => ({ ...row, events: eventsByReport.get(row.uuid) ?? [] }));
+  }
   return {
     async findAccount(userId) {
       const [row] = await database
@@ -94,60 +151,10 @@ export function createAnalysisRepository(database: Database): AnalysisRepository
       return row.value;
     },
     async listTeamReports(teamNumber, account) {
-      const rows = await database
-        .select({
-          uuid: scoutReports.uuid,
-          accuracy: scoutReports.accuracy,
-          autoClimb: scoutReports.autoClimb,
-          beached: scoutReports.beached,
-          disrupts: scoutReports.disrupts,
-          driverAbility: scoutReports.driverAbility,
-          defenseEffectiveness: scoutReports.defenseEffectiveness,
-          endgameClimb: scoutReports.endgameClimb,
-          feederTypes: scoutReports.feederTypes,
-          fieldTraversal: scoutReports.fieldTraversal,
-          intakeType: scoutReports.intakeType,
-          robotRoles: scoutReports.robotRoles,
-          scoresWhileMoving: scoutReports.scoresWhileMoving,
-          matchKey: teamMatchData.key,
-          tournamentKey: teamMatchData.tournamentKey,
-          tournamentDate: tournaments.date,
-          matchType: teamMatchData.matchType,
-          matchNumber: teamMatchData.matchNumber,
-          tournamentName: tournaments.name,
-          sourceTeamNumber: scouters.sourceTeamNumber,
-          scouterName: scouters.name,
-        })
-        .from(scoutReports)
-        .innerJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
-        .innerJoin(teamMatchData, eq(scoutReports.teamMatchKey, teamMatchData.key))
-        .innerJoin(tournaments, eq(teamMatchData.tournamentKey, tournaments.key))
-        .where(
-          and(
-            eq(teamMatchData.teamNumber, teamNumber),
-            teamSourceFilter(account.teamSourceRule),
-            tournamentSourceFilter(account.tournamentSourceRule)
-          )
-        )
-        .orderBy(
-          asc(tournaments.date),
-          asc(teamMatchData.matchType),
-          asc(teamMatchData.matchNumber),
-          asc(scoutReports.uuid)
-        );
-      if (rows.length === 0) return [];
-      const eventRows = await database
-        .select()
-        .from(events)
-        .where(
-          inArray(
-            events.scoutReportUuid,
-            rows.map(({ uuid }) => uuid)
-          )
-        )
-        .orderBy(asc(events.time));
-      const eventsByReport = Map.groupBy(eventRows, (event) => event.scoutReportUuid);
-      return rows.map((row) => ({ ...row, events: eventsByReport.get(row.uuid) ?? [] }));
+      return listReports(teamNumber, account);
+    },
+    listAllReports(account) {
+      return listReports(null, account);
     },
   };
 }

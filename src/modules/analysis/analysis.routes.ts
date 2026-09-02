@@ -12,6 +12,8 @@ import {
   TeamCategoryPathSchema,
   TeamFlagsQuerySchema,
   TeamFlagsSchema,
+  TeamMetricDetailsSchema,
+  TeamMetricPathSchema,
 } from './analysis.contracts';
 import type { AnalysisService } from './analysis.service';
 
@@ -111,6 +113,30 @@ const flagsRoute = createRoute({
     },
   },
 });
+const metricDetailsRoute = createRoute({
+  method: 'get',
+  path: '/metric/{metric}/team/{teamNumber}',
+  security: [{ DashboardAuth: [] }],
+  request: { params: TeamMetricPathSchema },
+  responses: {
+    200: {
+      description: 'Team metric timeline and field average, or grouped autonomous paths',
+      content: { 'application/json': { schema: TeamMetricDetailsSchema } },
+    },
+    400: {
+      description: 'Invalid team number or metric',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
 
 export function createAnalysisRouter(dependencies: {
   analysis: AnalysisService;
@@ -168,6 +194,17 @@ export function createAnalysisRouter(dependencies: {
         params.teamNumber,
         flags,
         query.tournamentKey
+      ),
+      200
+    );
+  });
+  router.openapi(metricDetailsRoute, async (context) => {
+    const params = context.req.valid('param');
+    return context.json(
+      await dependencies.analysis.metricDetails(
+        context.get('auth').userId,
+        params.teamNumber,
+        params.metric
       ),
       200
     );

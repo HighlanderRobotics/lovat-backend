@@ -82,6 +82,9 @@ function memoryRepository(input: {
     async listTeamReports() {
       return input.reports ?? [];
     },
+    async listAllReports() {
+      return input.reports ?? [];
+    },
   };
 }
 
@@ -240,6 +243,42 @@ describe('team category analysis', () => {
     expect(await service.flags('analyst', 8033, ['rank'])).toEqual([0]);
   });
 
+  it('returns metric timelines and grouped autonomous paths', async () => {
+    const row = report('detail', 'event_qm1_8033', 'event', '2026-03-01', {
+      driverAbility: 4,
+      tournamentName: 'Event',
+    });
+    row.events = [
+      event(row.uuid, 0, 'START_MATCH'),
+      event(row.uuid, 5, 'START_SCORING', { position: 'HUB' }),
+      event(row.uuid, 10, 'STOP_SCORING', { position: 'HUB', points: 6, quantity: 6 }),
+    ];
+    const service = createAnalysisService(memoryRepository({ reports: [row], count: 1 }));
+
+    expect(await service.metricDetails('analyst', 8033, 'driverAbility')).toEqual({
+      array: [{ match: 'event_qm1_8033', dataPoint: 4, tournamentName: 'Event' }],
+      result: 4,
+      all: 4,
+      difference: 0,
+      team: 8033,
+    });
+    expect(await service.metricDetails('analyst', 8033, 'autoPoints')).toEqual({
+      paths: [
+        {
+          positions: [
+            { location: 8, event: 2, time: 0, quantity: 0 },
+            { location: 2, event: 0, time: 5, quantity: 0 },
+            { location: 2, event: 1, time: 10, quantity: 6 },
+          ],
+          matches: [{ matchKey: 'event_qm1_8033', tournamentName: 'Event' }],
+          score: [6],
+          frequency: 1,
+          maxScore: 6,
+        },
+      ],
+    });
+  });
+
   it('exposes the authenticated OpenAPI route', async () => {
     const authenticator: Authenticator = {
       async authenticate(token) {
@@ -269,6 +308,7 @@ describe('team category analysis', () => {
     expect(document.paths['/breakdown/team/{teamNumber}']?.get).toBeDefined();
     expect(document.paths['/breakdown/team/{teamNumber}/{breakdown}']?.get).toBeDefined();
     expect(document.paths['/flag/team/{teamNumber}']?.get).toBeDefined();
+    expect(document.paths['/metric/{metric}/team/{teamNumber}']?.get).toBeDefined();
     const invalid = await router.request('/breakdown/team/8033/unknown', {
       headers: { authorization: 'Bearer valid' },
     });
