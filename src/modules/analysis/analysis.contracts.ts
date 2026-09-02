@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { breakdownNames } from './analysis.service';
 
 export const TeamCategoryPathSchema = z.object({
   teamNumber: z.coerce.number().int().positive(),
@@ -32,3 +33,24 @@ export const TeamCategoryMetricsSchema = z
     z.object({ error: z.enum(['TEAM_DOES_NOT_EXIST', 'NO_DATA_FOR_TEAM']) }),
   ])
   .openapi('TeamCategoryMetrics');
+
+export const TeamBreakdownPathSchema = TeamCategoryPathSchema.extend({
+  breakdown: z.enum(breakdownNames),
+});
+export const TeamBreakdownMetricsSchema = z
+  .union([
+    z.partialRecord(z.enum(breakdownNames), z.record(z.string(), z.number())),
+    z.object({ error: z.enum(['TEAM_DOES_NOT_EXIST', 'NO_DATA_FOR_TEAM']) }),
+  ])
+  .openapi('TeamBreakdownMetrics');
+export const TeamBreakdownDetailsSchema = z
+  .array(
+    z.object({
+      key: z.string(),
+      tournamentName: z.string(),
+      breakdown: z.string(),
+      sourceTeam: z.number().int().positive(),
+      scouter: z.string().optional(),
+    })
+  )
+  .openapi('TeamBreakdownDetails');

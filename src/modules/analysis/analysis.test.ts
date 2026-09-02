@@ -6,6 +6,7 @@ import { createAnalysisService } from './analysis.service';
 
 const account: AnalysisAccount = {
   id: 'analyst',
+  teamNumber: 8033,
   teamSourceRule: { mode: 'EXCLUDE', items: [] },
   tournamentSourceRule: { mode: 'EXCLUDE', items: [] },
 };
@@ -26,9 +27,19 @@ function report(
     matchNumber: 1,
     accuracy: 5,
     autoClimb: 'NOT_ATTEMPTED',
+    beached: 'NEITHER',
+    disrupts: false,
     driverAbility: 3,
     defenseEffectiveness: 2,
     endgameClimb: 'NOT_ATTEMPTED',
+    feederTypes: [],
+    fieldTraversal: 'NONE',
+    intakeType: 'NEITHER',
+    robotRoles: [],
+    scoresWhileMoving: false,
+    tournamentName: tournamentKey,
+    sourceTeamNumber: 8033,
+    scouterName: 'Scout',
     events: [],
     ...overrides,
   };
@@ -147,6 +158,68 @@ describe('team category analysis', () => {
     expect(Object.values(result).every((value) => value === 0)).toBe(true);
   });
 
+  it('summarizes scalar and array breakdowns using their legacy denominators', async () => {
+    const first = report('first', 'event_qm1_8033', 'event', '2026-03-01', {
+      robotRoles: ['SCORING', 'DEFENDING'],
+      feederTypes: ['CONTINUOUS'],
+      fieldTraversal: 'TRENCH',
+      scoresWhileMoving: true,
+    });
+    const second = report('second', 'event_qm2_8033', 'event', '2026-03-01', {
+      robotRoles: ['SCORING'],
+      feederTypes: ['DUMP'],
+      fieldTraversal: 'BUMP',
+    });
+    const service = createAnalysisService(memoryRepository({ reports: [first, second], count: 2 }));
+
+    const result = await service.breakdownMetrics('analyst', 8033);
+
+    if ('error' in result) throw new Error(result.error);
+    expect(result.robotRole?.SCORING).toBeCloseTo(2 / 3);
+    expect(result.robotRole?.DEFENDING).toBeCloseTo(1 / 3);
+    expect(result.fieldTraversal).toEqual({ TRENCH: 0.5, BUMP: 0.5, BOTH: 0, NONE: 0 });
+    expect(result.scoresWhileMoving).toEqual({ FALSE: 0.5, TRUE: 0.5 });
+  });
+
+  it('expands array breakdown details and masks other teams’ scouter names', async () => {
+    const own = report('own', 'new_qm2_8033', 'new', '2026-02-01', {
+      robotRoles: ['SCORING', 'DEFENDING'],
+      tournamentName: 'New Event',
+    });
+    const external = report('external', 'old_qm1_8033', 'old', '2026-01-01', {
+      robotRoles: ['FEEDING'],
+      tournamentName: 'Old Event',
+      sourceTeamNumber: 254,
+      scouterName: 'Hidden',
+    });
+    const service = createAnalysisService(memoryRepository({ reports: [external, own], count: 2 }));
+
+    const result = await service.breakdownDetails('analyst', 8033, 'robotRole');
+
+    expect(result).toEqual([
+      {
+        key: 'new_qm2_8033',
+        tournamentName: 'New Event',
+        breakdown: 'SCORING',
+        sourceTeam: 8033,
+        scouter: 'Scout',
+      },
+      {
+        key: 'new_qm2_8033',
+        tournamentName: 'New Event',
+        breakdown: 'DEFENDING',
+        sourceTeam: 8033,
+        scouter: 'Scout',
+      },
+      {
+        key: 'old_qm1_8033',
+        tournamentName: 'Old Event',
+        breakdown: 'FEEDING',
+        sourceTeam: 254,
+      },
+    ]);
+  });
+
   it('exposes the authenticated OpenAPI route', async () => {
     const authenticator: Authenticator = {
       async authenticate(token) {
@@ -173,5 +246,11 @@ describe('team category analysis', () => {
     expect(document.paths['/category/team/{teamNumber}']?.get?.security).toEqual([
       { DashboardAuth: [] },
     ]);
+    expect(document.paths['/breakdown/team/{teamNumber}']?.get).toBeDefined();
+    expect(document.paths['/breakdown/team/{teamNumber}/{breakdown}']?.get).toBeDefined();
+    const invalid = await router.request('/breakdown/team/8033/unknown', {
+      headers: { authorization: 'Bearer valid' },
+    });
+    expect(invalid.status).toBe(400);
   });
 });

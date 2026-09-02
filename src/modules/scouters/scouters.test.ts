@@ -117,6 +117,12 @@ describe('scouters module', () => {
         async categoryMetrics() {
           throw new Error('Not used by this test');
         },
+        async breakdownMetrics() {
+          throw new Error('Not used by this test');
+        },
+        async breakdownDetails() {
+          throw new Error('Not used by this test');
+        },
       },
       scouters: createScoutersService(memory.repository),
       accounts: {

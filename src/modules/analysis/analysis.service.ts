@@ -27,6 +27,53 @@ const metricNames = [
 export type CategoryMetric = (typeof metricNames)[number];
 export type CategoryMetrics = Record<CategoryMetric, number>;
 
+export const breakdownNames = [
+  'robotRole',
+  'fieldTraversal',
+  'climbResult',
+  'beached',
+  'scoresWhileMoving',
+  'disrupts',
+  'autoClimb',
+  'feederType',
+  'intakeType',
+] as const;
+export type BreakdownName = (typeof breakdownNames)[number];
+const breakdownOptions = {
+  robotRole: ['CYCLING', 'SCORING', 'FEEDING', 'DEFENDING', 'IMMOBILE'],
+  fieldTraversal: ['TRENCH', 'BUMP', 'BOTH', 'NONE'],
+  climbResult: ['NOT_ATTEMPTED', 'FAILED', 'L1', 'L2', 'L3'],
+  beached: ['ON_FUEL', 'ON_BUMP', 'BOTH', 'NEITHER'],
+  scoresWhileMoving: ['FALSE', 'TRUE'],
+  disrupts: ['FALSE', 'TRUE'],
+  autoClimb: ['NOT_ATTEMPTED', 'FAILED', 'SUCCEEDED'],
+  feederType: ['CONTINUOUS', 'STOP_TO_SHOOT', 'DUMP'],
+  intakeType: ['GROUND', 'OUTPOST', 'BOTH', 'NEITHER'],
+} as const satisfies Record<BreakdownName, readonly string[]>;
+
+function breakdownValues(report: AnalysisReport, breakdown: BreakdownName): string[] {
+  switch (breakdown) {
+    case 'robotRole':
+      return report.robotRoles;
+    case 'fieldTraversal':
+      return [report.fieldTraversal];
+    case 'climbResult':
+      return [report.endgameClimb];
+    case 'beached':
+      return [report.beached];
+    case 'scoresWhileMoving':
+      return [report.scoresWhileMoving ? 'TRUE' : 'FALSE'];
+    case 'disrupts':
+      return [report.disrupts ? 'TRUE' : 'FALSE'];
+    case 'autoClimb':
+      return [report.autoClimb];
+    case 'feederType':
+      return report.feederTypes;
+    case 'intakeType':
+      return [report.intakeType];
+  }
+}
+
 const accuracyPercent = [25, 55, 65, 75, 85, 95] as const;
 const endgamePoints = { NOT_ATTEMPTED: 0, FAILED: 0, L1: 10, L2: 20, L3: 30 } as const;
 const average = (values: number[]) =>
@@ -181,6 +228,11 @@ function aggregate(metric: CategoryMetric, reports: AnalysisReport[]) {
 }
 
 export function createAnalysisService(repository: AnalysisRepository) {
+  async function teamReports(userId: string, teamNumber: number) {
+    const account = await repository.findAccount(userId);
+    if (!account) throw new NotFound('Account not found');
+    return { account, reports: await repository.listTeamReports(teamNumber, account) };
+  }
   return {
     async categoryMetrics(userId: string, teamNumber: number) {
       const [account, exists, reportCount] = await Promise.all([
@@ -195,6 +247,57 @@ export function createAnalysisService(repository: AnalysisRepository) {
       return Object.fromEntries(
         metricNames.map((metric) => [metric, aggregate(metric, reports)])
       ) as CategoryMetrics;
+    },
+    async breakdownMetrics(userId: string, teamNumber: number) {
+      const [account, exists, reportCount] = await Promise.all([
+        repository.findAccount(userId),
+        repository.teamExists(teamNumber),
+        repository.countTeamReports(teamNumber),
+      ]);
+      if (!account) throw new NotFound('Account not found');
+      if (!exists) return { error: 'TEAM_DOES_NOT_EXIST' as const };
+      if (reportCount === 0) return { error: 'NO_DATA_FOR_TEAM' as const };
+      const reports = await repository.listTeamReports(teamNumber, account);
+      const result: Partial<Record<BreakdownName, Record<string, number>>> = {};
+      for (const breakdown of breakdownNames) {
+        const counts = Object.fromEntries(
+          breakdownOptions[breakdown].map((option) => [option, 0])
+        ) as Record<string, number>;
+        let total = 0;
+        for (const report of reports) {
+          for (const value of breakdownValues(report, breakdown)) {
+            counts[value] = (counts[value] ?? 0) + 1;
+            total += 1;
+          }
+        }
+        if (total > 0) {
+          result[breakdown] = Object.fromEntries(
+            Object.entries(counts).map(([value, count]) => [value, count / total])
+          );
+        }
+      }
+      return result;
+    },
+    async breakdownDetails(userId: string, teamNumber: number, breakdown: BreakdownName) {
+      const { account, reports } = await teamReports(userId, teamNumber);
+      return [...reports]
+        .sort(
+          (left, right) =>
+            (right.tournamentDate ?? '').localeCompare(left.tournamentDate ?? '') ||
+            (left.matchType === right.matchType ? 0 : left.matchType === 'ELIMINATION' ? -1 : 1) ||
+            right.matchNumber - left.matchNumber
+        )
+        .flatMap((report) =>
+          breakdownValues(report, breakdown).map((value) => ({
+            key: report.matchKey,
+            tournamentName: report.tournamentName,
+            breakdown: value,
+            sourceTeam: report.sourceTeamNumber,
+            ...(account.teamNumber === report.sourceTeamNumber && report.scouterName !== null
+              ? { scouter: report.scouterName }
+              : {}),
+          }))
+        );
     },
   };
 }

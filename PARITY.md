@@ -48,6 +48,8 @@ tests are present.
 - [ ] Core team and multi-team metric analysis
 - [x] Team category metrics with source-rule filtering, per-match scout averaging, and tournament
       recency weighting
+- [x] Team discrete breakdown summaries and report-level details with source filtering and scouter
+      privacy
 - [ ] Team lookup details, categories, breakdowns, notes, and flags
 - [ ] Match and alliance predictions
 - [ ] Qualification ranking predictions

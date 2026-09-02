@@ -47,6 +47,12 @@ describe('teams module', () => {
         async categoryMetrics() {
           throw new Error('Not used by this test');
         },
+        async breakdownMetrics() {
+          throw new Error('Not used by this test');
+        },
+        async breakdownDetails() {
+          throw new Error('Not used by this test');
+        },
       },
       teams: createTeamsService(createMemoryRepository()),
       accounts: {

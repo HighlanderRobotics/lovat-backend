@@ -12,17 +12,32 @@ import {
 
 export type AnalysisAccount = Pick<
   typeof users.$inferSelect,
-  'id' | 'teamSourceRule' | 'tournamentSourceRule'
+  'id' | 'teamNumber' | 'teamSourceRule' | 'tournamentSourceRule'
 >;
 export type AnalysisReport = Pick<
   typeof scoutReports.$inferSelect,
-  'uuid' | 'accuracy' | 'autoClimb' | 'driverAbility' | 'defenseEffectiveness' | 'endgameClimb'
+  | 'uuid'
+  | 'accuracy'
+  | 'autoClimb'
+  | 'beached'
+  | 'disrupts'
+  | 'driverAbility'
+  | 'defenseEffectiveness'
+  | 'endgameClimb'
+  | 'feederTypes'
+  | 'fieldTraversal'
+  | 'intakeType'
+  | 'robotRoles'
+  | 'scoresWhileMoving'
 > & {
   matchKey: string;
   tournamentKey: string;
   tournamentDate: string | null;
   matchType: 'QUALIFICATION' | 'ELIMINATION';
   matchNumber: number;
+  tournamentName: string;
+  sourceTeamNumber: number;
+  scouterName: string | null;
   events: (typeof events.$inferSelect)[];
 };
 
@@ -53,6 +68,7 @@ export function createAnalysisRepository(database: Database): AnalysisRepository
       const [row] = await database
         .select({
           id: users.id,
+          teamNumber: users.teamNumber,
           teamSourceRule: users.teamSourceRule,
           tournamentSourceRule: users.tournamentSourceRule,
         })
@@ -83,14 +99,24 @@ export function createAnalysisRepository(database: Database): AnalysisRepository
           uuid: scoutReports.uuid,
           accuracy: scoutReports.accuracy,
           autoClimb: scoutReports.autoClimb,
+          beached: scoutReports.beached,
+          disrupts: scoutReports.disrupts,
           driverAbility: scoutReports.driverAbility,
           defenseEffectiveness: scoutReports.defenseEffectiveness,
           endgameClimb: scoutReports.endgameClimb,
+          feederTypes: scoutReports.feederTypes,
+          fieldTraversal: scoutReports.fieldTraversal,
+          intakeType: scoutReports.intakeType,
+          robotRoles: scoutReports.robotRoles,
+          scoresWhileMoving: scoutReports.scoresWhileMoving,
           matchKey: teamMatchData.key,
           tournamentKey: teamMatchData.tournamentKey,
           tournamentDate: tournaments.date,
           matchType: teamMatchData.matchType,
           matchNumber: teamMatchData.matchNumber,
+          tournamentName: tournaments.name,
+          sourceTeamNumber: scouters.sourceTeamNumber,
+          scouterName: scouters.name,
         })
         .from(scoutReports)
         .innerJoin(scouters, eq(scoutReports.scouterUuid, scouters.uuid))
