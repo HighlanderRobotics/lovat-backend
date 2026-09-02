@@ -315,6 +315,9 @@ describe('tournaments module', () => {
         async matchPrediction() {
           throw new Error('Not used by this test');
         },
+        async qualificationRankingPrediction() {
+          throw new Error('Not used by this test');
+        },
       },
       tournaments: createTournamentsService(createMemoryRepository(), {
         async getTeamEventStatus(key, teamNumber) {
@@ -323,6 +326,9 @@ describe('tournaments module', () => {
         },
         async getEventMatches() {
           return { notModified: true };
+        },
+        async getEventPredictionData() {
+          throw new Error('Not used by this test');
         },
       }),
       accounts: {

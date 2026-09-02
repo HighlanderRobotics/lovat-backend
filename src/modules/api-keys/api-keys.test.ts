@@ -157,6 +157,9 @@ describe('api keys module', () => {
         async matchPrediction() {
           throw new Error('Not used by this test');
         },
+        async qualificationRankingPrediction() {
+          throw new Error('Not used by this test');
+        },
       },
       apiKeys,
       accounts: {

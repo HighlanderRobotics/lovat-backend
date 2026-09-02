@@ -9,6 +9,8 @@ import {
   AllianceQuerySchema,
   MatchPredictionQuerySchema,
   MatchPredictionSchema,
+  QualificationRankingPredictionSchema,
+  QualificationRankingQuerySchema,
   TeamBreakdownDetailsSchema,
   TeamBreakdownMetricsSchema,
   TeamBreakdownPathSchema,
@@ -189,6 +191,30 @@ const matchPredictionRoute = createRoute({
     },
   },
 });
+const qualificationRankingRoute = createRoute({
+  method: 'get',
+  path: '/qualrankingprediction',
+  security: [{ DashboardAuth: [] }],
+  request: { query: QualificationRankingQuerySchema },
+  responses: {
+    200: {
+      description: 'Qualification rankings combining completed results and predicted matches',
+      content: { 'application/json': { schema: QualificationRankingPredictionSchema } },
+    },
+    400: {
+      description: 'Invalid tournament key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
 
 export function createAnalysisRouter(dependencies: {
   analysis: AnalysisService;
@@ -283,5 +309,14 @@ export function createAnalysisRouter(dependencies: {
       200
     );
   });
+  router.openapi(qualificationRankingRoute, async (context) =>
+    context.json(
+      await dependencies.analysis.qualificationRankingPrediction(
+        context.get('auth').userId,
+        context.req.valid('query').tournamentKey
+      ),
+      200
+    )
+  );
   return router;
 }

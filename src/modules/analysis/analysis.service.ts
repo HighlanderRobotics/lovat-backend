@@ -401,6 +401,55 @@ export function createAnalysisService(repository: AnalysisRepository, tbaClient?
       totalBallThroughput: sum('totalFuelOutputted'),
     };
   }
+  async function predictMatch(
+    userId: string,
+    red: [number, number, number],
+    blue: [number, number, number]
+  ) {
+    const account = await repository.findAccount(userId);
+    if (!account) throw new NotFound('Account not found');
+    const teams = [...red, ...blue];
+    const reports = await Promise.all(
+      teams.map((teamNumber) => repository.listTeamReports(teamNumber, account))
+    );
+    const points = reports.map((teamReports) =>
+      [...Map.groupBy(teamReports, (report) => report.matchKey).values()].map((matchReports) =>
+        matchMetric('totalPoints', matchReports)
+      )
+    );
+    if (points.some((values) => values.length <= 1)) return { error: 'not enough data' as const };
+    const allianceStats = (offset: number) => ({
+      mean: mean(points[offset]) + mean(points[offset + 1]) + mean(points[offset + 2]),
+      deviation: Math.sqrt(
+        standardDeviation(points[offset]) ** 2 +
+          standardDeviation(points[offset + 1]) ** 2 +
+          standardDeviation(points[offset + 2]) ** 2
+      ),
+    });
+    const redStats = allianceStats(0);
+    const blueStats = allianceStats(3);
+    const differentialDeviation = Math.sqrt(redStats.deviation ** 2 + blueStats.deviation ** 2);
+    const z = (blueStats.mean - redStats.mean) / differentialDeviation;
+    const redWinning = Number.isNaN(z) ? 0.5 : 1 - normalCdf(z);
+    const blueWinning = 1 - redWinning;
+    const [redAlliance, blueAlliance] = await Promise.all([
+      allianceAnalysis(userId, red),
+      allianceAnalysis(userId, blue),
+    ]);
+    return {
+      red1: red[0],
+      red2: red[1],
+      red3: red[2],
+      blue1: blue[0],
+      blue2: blue[1],
+      blue3: blue[2],
+      redWinning,
+      blueWinning,
+      winningAlliance: redWinning >= blueWinning ? 0 : 1,
+      redAlliance,
+      blueAlliance,
+    };
+  }
   return {
     async categoryMetrics(userId: string, teamNumber: number) {
       const [account, exists, reportCount] = await Promise.all([
@@ -518,48 +567,109 @@ export function createAnalysisService(repository: AnalysisRepository, tbaClient?
       red: [number, number, number],
       blue: [number, number, number]
     ) {
-      const account = await repository.findAccount(userId);
-      if (!account) throw new NotFound('Account not found');
-      const teams = [...red, ...blue];
-      const reports = await Promise.all(
-        teams.map((teamNumber) => repository.listTeamReports(teamNumber, account))
-      );
-      const points = reports.map((teamReports) =>
-        [...Map.groupBy(teamReports, (report) => report.matchKey).values()].map((matchReports) =>
-          matchMetric('totalPoints', matchReports)
-        )
-      );
-      if (points.some((values) => values.length <= 1)) return { error: 'not enough data' as const };
-      const allianceStats = (offset: number) => ({
-        mean: mean(points[offset]) + mean(points[offset + 1]) + mean(points[offset + 2]),
-        deviation: Math.sqrt(
-          standardDeviation(points[offset]) ** 2 +
-            standardDeviation(points[offset + 1]) ** 2 +
-            standardDeviation(points[offset + 2]) ** 2
-        ),
-      });
-      const redStats = allianceStats(0);
-      const blueStats = allianceStats(3);
-      const differentialDeviation = Math.sqrt(redStats.deviation ** 2 + blueStats.deviation ** 2);
-      const redWinning = 1 - normalCdf((blueStats.mean - redStats.mean) / differentialDeviation);
-      const blueWinning = 1 - redWinning;
-      const [redAlliance, blueAlliance] = await Promise.all([
-        allianceAnalysis(userId, red),
-        allianceAnalysis(userId, blue),
-      ]);
-      return {
-        red1: red[0],
-        red2: red[1],
-        red3: red[2],
-        blue1: blue[0],
-        blue2: blue[1],
-        blue3: blue[2],
-        redWinning,
-        blueWinning,
-        winningAlliance: redWinning >= blueWinning ? 0 : 1,
-        redAlliance,
-        blueAlliance,
+      return predictMatch(userId, red, blue);
+    },
+    async qualificationRankingPrediction(userId: string, tournamentKey: string) {
+      if (!tbaClient) return { error: 'Failed to fetch match or team data from TBA' as const };
+      const lastMatch = await repository.lastReportedQualification(tournamentKey);
+      if (lastMatch === null) return { error: 'not enough data' as const };
+      let eventData: Awaited<ReturnType<TbaClient['getEventPredictionData']>>;
+      try {
+        eventData = await tbaClient.getEventPredictionData(tournamentKey);
+      } catch {
+        return { error: 'Failed to fetch match or team data from TBA' as const };
+      }
+      type Ranking = {
+        teamNumber: number;
+        wins: number;
+        losses: number;
+        ties: number;
+        rankingPoints: number;
+        matchesPlayed: number;
+        combinedScore: number;
+        averageScore: number;
+        highScore: number;
       };
+      const rankings = new Map<number, Ranking>(
+        eventData.teams.map((teamNumber) => [
+          teamNumber,
+          {
+            teamNumber,
+            wins: 0,
+            losses: 0,
+            ties: 0,
+            rankingPoints: 0,
+            matchesPlayed: 0,
+            combinedScore: 0,
+            averageScore: 0,
+            highScore: 0,
+          },
+        ])
+      );
+      const apply = (
+        teamNumbers: number[],
+        result: 'win' | 'loss' | 'tie',
+        rankingPoints: number,
+        score: number
+      ) => {
+        for (const teamNumber of teamNumbers) {
+          const ranking = rankings.get(teamNumber);
+          if (!ranking) continue;
+          if (result === 'win') ranking.wins += 1;
+          else if (result === 'loss') ranking.losses += 1;
+          else ranking.ties += 1;
+          ranking.rankingPoints += rankingPoints;
+          ranking.matchesPlayed += 1;
+          ranking.combinedScore += score;
+          ranking.highScore = Math.max(ranking.highScore, score);
+        }
+      };
+      for (const match of eventData.matches) {
+        if (match.matchNumber <= lastMatch) {
+          const redResult =
+            match.winningAlliance === 'red'
+              ? 'win'
+              : match.winningAlliance === 'blue'
+                ? 'loss'
+                : 'tie';
+          const blueResult =
+            match.winningAlliance === 'blue'
+              ? 'win'
+              : match.winningAlliance === 'red'
+                ? 'loss'
+                : 'tie';
+          apply(match.redTeams, redResult, match.redRankingPoints, match.redScore);
+          apply(match.blueTeams, blueResult, match.blueRankingPoints, match.blueScore);
+          continue;
+        }
+        const red = match.redTeams as [number, number, number];
+        const blue = match.blueTeams as [number, number, number];
+        const prediction = await predictMatch(userId, red, blue);
+        if ('error' in prediction) return { error: 'not enough data' as const };
+        const redAlliance = prediction.redAlliance;
+        const blueAlliance = prediction.blueAlliance;
+        let redRankingPoints =
+          (redAlliance.totalPoints >= 240 ? 1 : 0) + (redAlliance.totalPoints >= 400 ? 1 : 0);
+        let blueRankingPoints =
+          (blueAlliance.totalPoints >= 240 ? 1 : 0) + (blueAlliance.totalPoints >= 400 ? 1 : 0);
+        const redWins = prediction.winningAlliance === 0;
+        if (redWins) redRankingPoints += 3;
+        else blueRankingPoints += 3;
+        apply(red, redWins ? 'win' : 'loss', redRankingPoints, redAlliance.totalPoints * 0.9);
+        apply(blue, redWins ? 'loss' : 'win', blueRankingPoints, blueAlliance.totalPoints * 0.9);
+      }
+      const result = [...rankings.values()];
+      for (const ranking of result) {
+        ranking.averageScore =
+          ranking.matchesPlayed > 0 ? ranking.combinedScore / ranking.matchesPlayed : 0;
+      }
+      result.sort(
+        (left, right) =>
+          right.rankingPoints - left.rankingPoints ||
+          right.averageScore - left.averageScore ||
+          right.highScore - left.highScore
+      );
+      return { tournamentKey, rankings: result };
     },
   };
 }

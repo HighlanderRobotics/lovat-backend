@@ -55,7 +55,7 @@ tests are present.
 - [x] Team lookup details, categories, breakdowns, notes, and flags
 - [x] Three-team alliance metrics, roles, climb timing, fuel totals, and autonomous paths
 - [x] Match and alliance predictions
-- [ ] Qualification ranking predictions
+- [x] Qualification ranking predictions
 - [ ] Picklist analysis and z-score ranking
 - [ ] Scouting-lead progress and report quality views
 - [ ] CSV team and scout-report exports

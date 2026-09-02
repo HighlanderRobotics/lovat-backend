@@ -151,3 +151,29 @@ export const MatchPredictionSchema = z
     }),
   ])
   .openapi('MatchPrediction');
+
+export const QualificationRankingQuerySchema = z.object({
+  tournamentKey: z.string().trim().min(1),
+});
+const PredictedTeamRankingSchema = z.object({
+  teamNumber: z.number().int().positive(),
+  wins: z.number().int().nonnegative(),
+  losses: z.number().int().nonnegative(),
+  ties: z.number().int().nonnegative(),
+  rankingPoints: z.number().nonnegative(),
+  matchesPlayed: z.number().int().nonnegative(),
+  combinedScore: z.number().nonnegative(),
+  averageScore: z.number().nonnegative(),
+  highScore: z.number().nonnegative(),
+});
+export const QualificationRankingPredictionSchema = z
+  .union([
+    z.object({
+      tournamentKey: z.string(),
+      rankings: z.array(PredictedTeamRankingSchema),
+    }),
+    z.object({
+      error: z.enum(['Failed to fetch match or team data from TBA', 'not enough data']),
+    }),
+  ])
+  .openapi('QualificationRankingPrediction');

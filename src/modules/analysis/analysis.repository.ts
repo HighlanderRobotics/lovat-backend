@@ -47,6 +47,7 @@ export interface AnalysisRepository {
   countTeamReports(teamNumber: number): Promise<number>;
   listTeamReports(teamNumber: number, account: AnalysisAccount): Promise<AnalysisReport[]>;
   listAllReports(account: AnalysisAccount): Promise<AnalysisReport[]>;
+  lastReportedQualification(tournamentKey: string): Promise<number | null>;
 }
 
 function teamSourceFilter(rule: AnalysisAccount['teamSourceRule']) {
@@ -155,6 +156,19 @@ export function createAnalysisRepository(database: Database): AnalysisRepository
     },
     listAllReports(account) {
       return listReports(null, account);
+    },
+    async lastReportedQualification(tournamentKey) {
+      const [row] = await database
+        .select({ value: sql<number | null>`max(${teamMatchData.matchNumber})::int` })
+        .from(teamMatchData)
+        .innerJoin(scoutReports, eq(scoutReports.teamMatchKey, teamMatchData.key))
+        .where(
+          and(
+            eq(teamMatchData.tournamentKey, tournamentKey),
+            eq(teamMatchData.matchType, 'QUALIFICATION')
+          )
+        );
+      return row.value;
     },
   };
 }

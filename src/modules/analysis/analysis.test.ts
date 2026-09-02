@@ -68,6 +68,7 @@ function memoryRepository(input: {
   count?: number;
   reports?: AnalysisReport[];
   account?: AnalysisAccount | null;
+  lastReported?: number | null;
 }): AnalysisRepository {
   return {
     async findAccount() {
@@ -84,6 +85,9 @@ function memoryRepository(input: {
     },
     async listAllReports() {
       return input.reports ?? [];
+    },
+    async lastReportedQualification() {
+      return input.lastReported === undefined ? 1 : input.lastReported;
     },
   };
 }
@@ -235,6 +239,9 @@ describe('team category analysis', () => {
       async getEventMatches() {
         throw new Error('Not used by this test');
       },
+      async getEventPredictionData() {
+        throw new Error('Not used by this test');
+      },
     });
 
     expect(
@@ -344,6 +351,50 @@ describe('team category analysis', () => {
     });
   });
 
+  it('builds qualification rankings from completed TBA results', async () => {
+    const service = createAnalysisService(memoryRepository({ lastReported: 2 }), {
+      async getTeamEventStatus() {
+        throw new Error('Not used by this test');
+      },
+      async getEventMatches() {
+        throw new Error('Not used by this test');
+      },
+      async getEventPredictionData() {
+        return {
+          teams: [1, 2, 3, 4, 5, 6],
+          matches: [
+            {
+              matchNumber: 1,
+              predictedTime: 100,
+              redTeams: [1, 2, 3],
+              blueTeams: [4, 5, 6],
+              redScore: 150,
+              blueScore: 100,
+              winningAlliance: 'red',
+              redRankingPoints: 4,
+              blueRankingPoints: 1,
+            },
+          ],
+        };
+      },
+    });
+
+    const result = await service.qualificationRankingPrediction('analyst', '2026event');
+
+    if ('error' in result) throw new Error(result.error);
+    expect(result.tournamentKey).toBe('2026event');
+    expect(result.rankings.slice(0, 3).map(({ teamNumber }) => teamNumber)).toEqual([1, 2, 3]);
+    expect(result.rankings[0]).toMatchObject({
+      wins: 1,
+      rankingPoints: 4,
+      matchesPlayed: 1,
+      combinedScore: 150,
+      averageScore: 150,
+      highScore: 150,
+    });
+    expect(result.rankings[3]).toMatchObject({ losses: 1, rankingPoints: 1 });
+  });
+
   it('exposes the authenticated OpenAPI route', async () => {
     const authenticator: Authenticator = {
       async authenticate(token) {
@@ -376,6 +427,7 @@ describe('team category analysis', () => {
     expect(document.paths['/metric/{metric}/team/{teamNumber}']?.get).toBeDefined();
     expect(document.paths['/alliance']?.get).toBeDefined();
     expect(document.paths['/matchprediction']?.get).toBeDefined();
+    expect(document.paths['/qualrankingprediction']?.get).toBeDefined();
     const invalid = await router.request('/breakdown/team/8033/unknown', {
       headers: { authorization: 'Bearer valid' },
     });

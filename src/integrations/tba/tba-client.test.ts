@@ -93,4 +93,53 @@ describe('The Blue Alliance client', () => {
     );
     expect(await client.getEventMatches('2026alpha', 'same')).toEqual({ notModified: true });
   });
+
+  it('maps scored qualification matches and event teams for ranking prediction', async () => {
+    const client = createTbaClient('secret', async (input) => {
+      if (input.endsWith('/teams/simple')) {
+        return globalThis.Response.json([{ team_number: 8033 }, { team_number: 254 }]);
+      }
+      return globalThis.Response.json([
+        {
+          comp_level: 'qm',
+          match_number: 2,
+          predicted_time: 200,
+          winning_alliance: 'red',
+          alliances: {
+            red: { team_keys: ['frc8033', 'frc254', 'frc1678'], score: 150 },
+            blue: { team_keys: ['frc4414', 'frc5940', 'frc971'], score: 120 },
+          },
+          score_breakdown: { red: { rp: 4 }, blue: { rp: 1 } },
+        },
+        {
+          comp_level: 'sf',
+          match_number: 1,
+          predicted_time: 100,
+          winning_alliance: '',
+          alliances: {
+            red: { team_keys: ['frc1', 'frc2', 'frc3'], score: 0 },
+            blue: { team_keys: ['frc4', 'frc5', 'frc6'], score: 0 },
+          },
+          score_breakdown: null,
+        },
+      ]);
+    });
+
+    expect(await client.getEventPredictionData('2026alpha')).toEqual({
+      teams: [8033, 254],
+      matches: [
+        {
+          matchNumber: 2,
+          predictedTime: 200,
+          redTeams: [8033, 254, 1678],
+          blueTeams: [4414, 5940, 971],
+          redScore: 150,
+          blueScore: 120,
+          winningAlliance: 'red',
+          redRankingPoints: 4,
+          blueRankingPoints: 1,
+        },
+      ],
+    });
+  });
 });

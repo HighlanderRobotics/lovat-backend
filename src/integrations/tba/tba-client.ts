@@ -32,9 +32,27 @@ export type EventMatchRefresh =
   | { notModified: true }
   | { notModified: false; etag: string | null; matches: ImportedTeamMatch[] };
 
+export type QualificationPredictionMatch = {
+  matchNumber: number;
+  predictedTime: number;
+  redTeams: number[];
+  blueTeams: number[];
+  redScore: number;
+  blueScore: number;
+  winningAlliance: 'red' | 'blue' | '';
+  redRankingPoints: number;
+  blueRankingPoints: number;
+};
+
+export type EventPredictionData = {
+  teams: number[];
+  matches: QualificationPredictionMatch[];
+};
+
 export interface TbaClient {
   getTeamEventStatus(eventKey: string, teamNumber: number): Promise<TeamEventStatus>;
   getEventMatches(eventKey: string, etag: string | null): Promise<EventMatchRefresh>;
+  getEventPredictionData(eventKey: string): Promise<EventPredictionData>;
 }
 
 type TbaFetch = (
@@ -60,6 +78,24 @@ const EventMatchSchema = z.object({
     blue: z.object({ team_keys: z.array(z.string()) }),
   }),
 });
+const PredictionMatchSchema = z.object({
+  comp_level: z.string(),
+  match_number: z.number().int().positive(),
+  predicted_time: z.number().nullable().optional(),
+  winning_alliance: z.enum(['red', 'blue', '']),
+  alliances: z.object({
+    red: z.object({ team_keys: z.array(z.string()), score: z.number() }),
+    blue: z.object({ team_keys: z.array(z.string()), score: z.number() }),
+  }),
+  score_breakdown: z
+    .object({
+      red: z.object({ rp: z.number().optional() }).nullable().optional(),
+      blue: z.object({ rp: z.number().optional() }).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+});
+const SimpleTeamSchema = z.object({ team_number: z.number().int().positive() });
 const playoffOrder = {
   10: [
     'sf1m1',
@@ -162,6 +198,42 @@ export function createTbaClient(
         notModified: false,
         etag: matchesResponse.headers?.get('etag') ?? null,
         matches,
+      };
+    },
+    async getEventPredictionData(eventKey) {
+      if (!authKey) throw new Error('TBA_KEY is not configured');
+      const base = 'https://www.thebluealliance.com/api/v3';
+      const headers = { 'X-TBA-Auth-Key': authKey };
+      const [matchesResponse, teamsResponse] = await Promise.all([
+        fetcher(`${base}/event/${encodeURIComponent(eventKey)}/matches`, { headers }),
+        fetcher(`${base}/event/${encodeURIComponent(eventKey)}/teams/simple`, { headers }),
+      ]);
+      if (!matchesResponse.ok || !teamsResponse.ok)
+        throw new Error('Failed to fetch match or team data from TBA');
+      const sourceMatches = z.array(PredictionMatchSchema).parse(await matchesResponse.json());
+      const sourceTeams = z.array(SimpleTeamSchema).parse(await teamsResponse.json());
+      return {
+        teams: sourceTeams.map(({ team_number }) => team_number),
+        matches: sourceMatches
+          .filter(({ comp_level }) => comp_level === 'qm')
+          .map((match) => ({
+            matchNumber: match.match_number,
+            predictedTime: match.predicted_time ?? 0,
+            redTeams: match.alliances.red.team_keys.map((key) => Number(key.replace(/^frc/, ''))),
+            blueTeams: match.alliances.blue.team_keys.map((key) => Number(key.replace(/^frc/, ''))),
+            redScore: match.alliances.red.score,
+            blueScore: match.alliances.blue.score,
+            winningAlliance: match.winning_alliance,
+            redRankingPoints: match.score_breakdown?.red?.rp ?? 0,
+            blueRankingPoints: match.score_breakdown?.blue?.rp ?? 0,
+          }))
+          .filter(
+            ({ redTeams, blueTeams }) =>
+              redTeams.length === 3 &&
+              blueTeams.length === 3 &&
+              [...redTeams, ...blueTeams].every((team) => Number.isInteger(team) && team > 0)
+          )
+          .sort((left, right) => left.predictedTime - right.predictedTime),
       };
     },
   };
