@@ -10,6 +10,8 @@ import {
   TeamBreakdownPathSchema,
   TeamCategoryMetricsSchema,
   TeamCategoryPathSchema,
+  TeamFlagsQuerySchema,
+  TeamFlagsSchema,
 } from './analysis.contracts';
 import type { AnalysisService } from './analysis.service';
 
@@ -85,6 +87,30 @@ const breakdownDetailsRoute = createRoute({
     },
   },
 });
+const flagsRoute = createRoute({
+  method: 'get',
+  path: '/flag/team/{teamNumber}',
+  security: [{ DashboardAuth: [] }],
+  request: { params: TeamCategoryPathSchema, query: TeamFlagsQuerySchema },
+  responses: {
+    200: {
+      description: 'Requested team metric and tournament-rank flags in input order',
+      content: { 'application/json': { schema: TeamFlagsSchema } },
+    },
+    400: {
+      description: 'Invalid team number or flags',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
 
 export function createAnalysisRouter(dependencies: {
   analysis: AnalysisService;
@@ -122,6 +148,26 @@ export function createAnalysisRouter(dependencies: {
         context.get('auth').userId,
         params.teamNumber,
         params.breakdown
+      ),
+      200
+    );
+  });
+  router.openapi(flagsRoute, async (context) => {
+    const params = context.req.valid('param');
+    const query = context.req.valid('query');
+    let flags: string[] = [];
+    try {
+      const parsed: unknown = JSON.parse(query.flags);
+      if (Array.isArray(parsed) && parsed.every((flag) => typeof flag === 'string')) flags = parsed;
+    } catch {
+      // The legacy endpoint treats malformed JSON as an empty flag list.
+    }
+    return context.json(
+      await dependencies.analysis.flags(
+        context.get('auth').userId,
+        params.teamNumber,
+        flags,
+        query.tournamentKey
       ),
       200
     );

@@ -59,6 +59,7 @@ export function createProductionDependencies(): AppDependencies {
   const scoutReportsRepository = createScoutReportsRepository(database);
   const sharedPicklistsRepository = createSharedPicklistsRepository(database);
   const analysisRepository = createAnalysisRepository(database);
+  const tbaClient = createTbaClient(environment.TBA_KEY);
   const dashboardAuthenticator = createAuth0Authenticator(
     environment.AUTH0_DOMAIN,
     environment.AUTH0_AUDIENCE,
@@ -68,16 +69,13 @@ export function createProductionDependencies(): AppDependencies {
   return {
     accounts: createAccountsService(accountsRepository),
     apiKeys: createApiKeysService(apiKeysRepository),
-    tournaments: createTournamentsService(
-      tournamentsRepository,
-      createTbaClient(environment.TBA_KEY)
-    ),
+    tournaments: createTournamentsService(tournamentsRepository, tbaClient),
     teams: createTeamsService(teamsRepository),
     scouters: createScoutersService(scoutersRepository),
     mutablePicklists: createMutablePicklistsService(mutablePicklistsRepository),
     scoutReports: createScoutReportsService(scoutReportsRepository),
     sharedPicklists: createSharedPicklistsService(sharedPicklistsRepository),
-    analysis: createAnalysisService(analysisRepository),
+    analysis: createAnalysisService(analysisRepository, tbaClient),
     authenticator: createCompositeAuthenticator(
       dashboardAuthenticator,
       createApiKeyAuthenticator(apiKeysRepository)

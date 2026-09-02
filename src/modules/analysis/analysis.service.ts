@@ -1,7 +1,8 @@
 import { NotFound } from '../../platform/http/errors';
 import type { AnalysisReport, AnalysisRepository } from './analysis.repository';
+import type { TbaClient } from '../../integrations/tba/tba-client';
 
-const metricNames = [
+export const metricNames = [
   'totalPoints',
   'autoPoints',
   'teleopPoints',
@@ -227,7 +228,13 @@ function aggregate(metric: CategoryMetric, reports: AnalysisReport[]) {
   );
 }
 
-export function createAnalysisService(repository: AnalysisRepository) {
+function metricsForReports(reports: AnalysisReport[]) {
+  return Object.fromEntries(
+    metricNames.map((metric) => [metric, aggregate(metric, reports)])
+  ) as CategoryMetrics;
+}
+
+export function createAnalysisService(repository: AnalysisRepository, tbaClient?: TbaClient) {
   async function teamReports(userId: string, teamNumber: number) {
     const account = await repository.findAccount(userId);
     if (!account) throw new NotFound('Account not found');
@@ -244,9 +251,7 @@ export function createAnalysisService(repository: AnalysisRepository) {
       if (!exists) return { error: 'TEAM_DOES_NOT_EXIST' as const };
       if (reportCount === 0) return { error: 'NO_DATA_FOR_TEAM' as const };
       const reports = await repository.listTeamReports(teamNumber, account);
-      return Object.fromEntries(
-        metricNames.map((metric) => [metric, aggregate(metric, reports)])
-      ) as CategoryMetrics;
+      return metricsForReports(reports);
     },
     async breakdownMetrics(userId: string, teamNumber: number) {
       const [account, exists, reportCount] = await Promise.all([
@@ -298,6 +303,30 @@ export function createAnalysisService(repository: AnalysisRepository) {
               : {}),
           }))
         );
+    },
+    async flags(userId: string, teamNumber: number, flags: string[], tournamentKey?: string) {
+      const { reports } = await teamReports(userId, teamNumber);
+      const metrics = metricsForReports(reports);
+      const values: (number | null)[] = [];
+      for (const flag of flags) {
+        if (flag === 'rank') {
+          if (!tournamentKey || !tbaClient) {
+            values.push(0);
+            continue;
+          }
+          try {
+            const status = await tbaClient.getTeamEventStatus(tournamentKey, teamNumber);
+            values.push(status.rank ?? 0);
+          } catch {
+            values.push(0);
+          }
+        } else {
+          values.push(
+            metricNames.includes(flag as CategoryMetric) ? metrics[flag as CategoryMetric] : null
+          );
+        }
+      }
+      return values;
     },
   };
 }

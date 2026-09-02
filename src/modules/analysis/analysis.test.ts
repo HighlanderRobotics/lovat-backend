@@ -220,6 +220,26 @@ describe('team category analysis', () => {
     ]);
   });
 
+  it('returns metric, rank, and unknown flags in the requested order', async () => {
+    const row = report('flag', 'event_qm1_8033', 'event', '2026-03-01', {
+      driverAbility: 4,
+    });
+    const service = createAnalysisService(memoryRepository({ reports: [row], count: 1 }), {
+      async getTeamEventStatus(eventKey, teamNumber) {
+        expect([eventKey, teamNumber]).toEqual(['2026event', 8033]);
+        return { rank: 7, matchesPlayed: 2, rankingPoints: 4 };
+      },
+      async getEventMatches() {
+        throw new Error('Not used by this test');
+      },
+    });
+
+    expect(
+      await service.flags('analyst', 8033, ['driverAbility', 'rank', 'not-a-metric'], '2026event')
+    ).toEqual([4, 7, null]);
+    expect(await service.flags('analyst', 8033, ['rank'])).toEqual([0]);
+  });
+
   it('exposes the authenticated OpenAPI route', async () => {
     const authenticator: Authenticator = {
       async authenticate(token) {
@@ -248,9 +268,14 @@ describe('team category analysis', () => {
     ]);
     expect(document.paths['/breakdown/team/{teamNumber}']?.get).toBeDefined();
     expect(document.paths['/breakdown/team/{teamNumber}/{breakdown}']?.get).toBeDefined();
+    expect(document.paths['/flag/team/{teamNumber}']?.get).toBeDefined();
     const invalid = await router.request('/breakdown/team/8033/unknown', {
       headers: { authorization: 'Bearer valid' },
     });
     expect(invalid.status).toBe(400);
+    const malformedFlags = await router.request('/flag/team/8033?flags=not-json', {
+      headers: { authorization: 'Bearer valid' },
+    });
+    expect(await malformedFlags.json()).toEqual([]);
   });
 });

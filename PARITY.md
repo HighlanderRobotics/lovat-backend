@@ -50,6 +50,7 @@ tests are present.
       recency weighting
 - [x] Team discrete breakdown summaries and report-level details with source filtering and scouter
       privacy
+- [x] Ordered team metric flags and tournament-rank flags with TBA failure fallback
 - [ ] Team lookup details, categories, breakdowns, notes, and flags
 - [ ] Match and alliance predictions
 - [ ] Qualification ranking predictions

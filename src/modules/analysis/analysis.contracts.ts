@@ -54,3 +54,9 @@ export const TeamBreakdownDetailsSchema = z
     })
   )
   .openapi('TeamBreakdownDetails');
+
+export const TeamFlagsQuerySchema = z.object({
+  flags: z.string(),
+  tournamentKey: z.string().trim().min(1).optional(),
+});
+export const TeamFlagsSchema = z.array(z.number().nullable()).openapi('TeamAnalysisFlags');

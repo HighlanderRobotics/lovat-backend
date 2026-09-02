@@ -123,6 +123,9 @@ describe('scouters module', () => {
         async breakdownDetails() {
           throw new Error('Not used by this test');
         },
+        async flags() {
+          throw new Error('Not used by this test');
+        },
       },
       scouters: createScoutersService(memory.repository),
       accounts: {

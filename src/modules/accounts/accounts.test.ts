@@ -150,6 +150,9 @@ describe('accounts module', () => {
         async breakdownDetails() {
           throw new Error('Not used by this test');
         },
+        async flags() {
+          throw new Error('Not used by this test');
+        },
       },
       accounts: createAccountsService(repository),
       apiKeys: {

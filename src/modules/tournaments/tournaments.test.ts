@@ -303,6 +303,9 @@ describe('tournaments module', () => {
         async breakdownDetails() {
           throw new Error('Not used by this test');
         },
+        async flags() {
+          throw new Error('Not used by this test');
+        },
       },
       tournaments: createTournamentsService(createMemoryRepository(), {
         async getTeamEventStatus(key, teamNumber) {
