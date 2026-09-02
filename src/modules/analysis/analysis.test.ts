@@ -279,6 +279,36 @@ describe('team category analysis', () => {
     });
   });
 
+  it('combines three teams into the legacy alliance analysis shape', async () => {
+    const rows = new Map([
+      [1, [report('one', 'event_qm1_1', 'event', '2026-03-01', { robotRoles: ['SCORING'] })]],
+      [
+        2,
+        [
+          report('two', 'event_qm1_2', 'event', '2026-03-01', {
+            robotRoles: ['DEFENDING'],
+            endgameClimb: 'L1',
+            events: [event('two', 140, 'CLIMB')],
+          }),
+        ],
+      ],
+      [3, [report('three', 'event_qm1_3', 'event', '2026-03-01', { robotRoles: [] })]],
+    ]);
+    rows.get(1)![0].events = [event('one', 10, 'STOP_SCORING', { points: 5, quantity: 5 })];
+    rows.get(2)![0].events.push(event('two', 50, 'STOP_FEEDING', { quantity: 4 }));
+    const repository = memoryRepository({ count: 3 });
+    repository.listTeamReports = async (teamNumber) => rows.get(teamNumber) ?? [];
+    const service = createAnalysisService(repository);
+
+    const result = await service.alliance('analyst', [1, 2, 3]);
+
+    expect(result.totalPoints).toBe(14.75);
+    expect(result.teams.map(({ role }) => role)).toEqual([1, 3, 0]);
+    expect(result.l1StartTime).toEqual([null, 18, null]);
+    expect(result.totalFuelOutputted).toBe(9);
+    expect(result.totalBallThroughput).toBe(9);
+  });
+
   it('exposes the authenticated OpenAPI route', async () => {
     const authenticator: Authenticator = {
       async authenticate(token) {
@@ -309,6 +339,7 @@ describe('team category analysis', () => {
     expect(document.paths['/breakdown/team/{teamNumber}/{breakdown}']?.get).toBeDefined();
     expect(document.paths['/flag/team/{teamNumber}']?.get).toBeDefined();
     expect(document.paths['/metric/{metric}/team/{teamNumber}']?.get).toBeDefined();
+    expect(document.paths['/alliance']?.get).toBeDefined();
     const invalid = await router.request('/breakdown/team/8033/unknown', {
       headers: { authorization: 'Bearer valid' },
     });

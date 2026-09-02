@@ -59,6 +59,9 @@ describe('teams module', () => {
         async metricDetails() {
           throw new Error('Not used by this test');
         },
+        async alliance() {
+          throw new Error('Not used by this test');
+        },
       },
       teams: createTeamsService(createMemoryRepository()),
       accounts: {

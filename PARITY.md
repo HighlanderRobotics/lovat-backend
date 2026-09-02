@@ -53,6 +53,7 @@ tests are present.
 - [x] Ordered team metric flags and tournament-rank flags with TBA failure fallback
 - [x] Team metric timelines, field comparisons, and grouped autonomous paths
 - [x] Team lookup details, categories, breakdowns, notes, and flags
+- [x] Three-team alliance metrics, roles, climb timing, fuel totals, and autonomous paths
 - [ ] Match and alliance predictions
 - [ ] Qualification ranking predictions
 - [ ] Picklist analysis and z-score ranking

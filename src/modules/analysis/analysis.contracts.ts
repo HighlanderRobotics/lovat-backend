@@ -97,3 +97,36 @@ export const TeamMetricDetailsSchema = z
     }),
   ])
   .openapi('TeamMetricDetails');
+
+export const AllianceQuerySchema = z.object({
+  teamOne: z.coerce.number().int().positive(),
+  teamTwo: z.coerce.number().int().positive(),
+  teamThree: z.coerce.number().int().positive(),
+});
+const AutoPathSchema = z.object({
+  positions: z.array(AutoPathPositionSchema),
+  matches: z.array(z.object({ matchKey: z.string(), tournamentName: z.string() })),
+  score: z.array(z.number()),
+  frequency: z.number().int().positive(),
+  maxScore: z.number(),
+});
+export const AllianceAnalysisSchema = z
+  .object({
+    totalPoints: z.number(),
+    teams: z
+      .array(
+        z.object({
+          team: z.number().int().positive(),
+          role: z.number().int().min(0).max(4),
+          averagePoints: z.number(),
+          paths: z.array(AutoPathSchema),
+        })
+      )
+      .length(3),
+    l1StartTime: z.array(z.number().nullable()).length(3),
+    l2StartTime: z.array(z.number().nullable()).length(3),
+    l3StartTime: z.array(z.number().nullable()).length(3),
+    totalFuelOutputted: z.number(),
+    totalBallThroughput: z.number(),
+  })
+  .openapi('AllianceAnalysis');

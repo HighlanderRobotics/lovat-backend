@@ -267,6 +267,7 @@ const positionNumber = {
   OUTPOST: 7,
   NONE: 8,
 } as const;
+const roleOrder = ['CYCLING', 'SCORING', 'FEEDING', 'DEFENDING', 'IMMOBILE'] as const;
 
 function autoPaths(reports: AnalysisReport[]) {
   type Position = { location: number; event: number; time: number; quantity?: number };
@@ -438,6 +439,46 @@ export function createAnalysisService(repository: AnalysisRepository, tbaClient?
       const result = aggregate(metric, reports);
       const all = aggregate(metric, allReports);
       return { array, result, all, difference: result - all, team: teamNumber };
+    },
+    async alliance(userId: string, teamNumbers: [number, number, number]) {
+      const account = await repository.findAccount(userId);
+      if (!account) throw new NotFound('Account not found');
+      const reportsByTeam = await Promise.all(
+        teamNumbers.map((teamNumber) => repository.listTeamReports(teamNumber, account))
+      );
+      const teamMetrics = reportsByTeam.map(metricsForReports);
+      const teamResults = teamNumbers.map((team, index) => {
+        const reports = reportsByTeam[index];
+        const counts = Object.fromEntries(roleOrder.map((role) => [role, 0])) as Record<
+          (typeof roleOrder)[number],
+          number
+        >;
+        for (const report of reports) {
+          for (const role of report.robotRoles) counts[role] += 1;
+        }
+        const mainRole = roleOrder.reduce((best, role) =>
+          counts[role] > counts[best] ? role : best
+        );
+        return {
+          team,
+          role: roleOrder.indexOf(mainRole),
+          averagePoints: teamMetrics[index].totalPoints,
+          paths: autoPaths(reports),
+        };
+      });
+      const climbValues = (metric: 'l1StartTime' | 'l2StartTime' | 'l3StartTime') =>
+        teamMetrics.map((metrics) => (metrics[metric] > 0 ? metrics[metric] : null));
+      const sum = (metric: 'totalPoints' | 'totalFuelOutputted') =>
+        teamMetrics.reduce((total, metrics) => total + metrics[metric], 0);
+      return {
+        totalPoints: sum('totalPoints'),
+        teams: teamResults,
+        l1StartTime: climbValues('l1StartTime'),
+        l2StartTime: climbValues('l2StartTime'),
+        l3StartTime: climbValues('l3StartTime'),
+        totalFuelOutputted: sum('totalFuelOutputted'),
+        totalBallThroughput: sum('totalFuelOutputted'),
+      };
     },
   };
 }

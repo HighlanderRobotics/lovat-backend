@@ -156,6 +156,9 @@ describe('accounts module', () => {
         async metricDetails() {
           throw new Error('Not used by this test');
         },
+        async alliance() {
+          throw new Error('Not used by this test');
+        },
       },
       accounts: createAccountsService(repository),
       apiKeys: {

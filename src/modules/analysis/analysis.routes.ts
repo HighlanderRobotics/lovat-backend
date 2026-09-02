@@ -5,6 +5,8 @@ import type { Authenticator } from '../../platform/auth/types';
 import { ErrorResponseSchema } from '../../platform/http/contracts';
 import { BadRequest, handleErrors } from '../../platform/http/errors';
 import {
+  AllianceAnalysisSchema,
+  AllianceQuerySchema,
   TeamBreakdownDetailsSchema,
   TeamBreakdownMetricsSchema,
   TeamBreakdownPathSchema,
@@ -137,6 +139,30 @@ const metricDetailsRoute = createRoute({
     },
   },
 });
+const allianceRoute = createRoute({
+  method: 'get',
+  path: '/alliance',
+  security: [{ DashboardAuth: [] }],
+  request: { query: AllianceQuerySchema },
+  responses: {
+    200: {
+      description: 'Three-team alliance metrics, roles, climbs, and autonomous paths',
+      content: { 'application/json': { schema: AllianceAnalysisSchema } },
+    },
+    400: {
+      description: 'Invalid team numbers',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
 
 export function createAnalysisRouter(dependencies: {
   analysis: AnalysisService;
@@ -206,6 +232,17 @@ export function createAnalysisRouter(dependencies: {
         params.teamNumber,
         params.metric
       ),
+      200
+    );
+  });
+  router.openapi(allianceRoute, async (context) => {
+    const query = context.req.valid('query');
+    return context.json(
+      await dependencies.analysis.alliance(context.get('auth').userId, [
+        query.teamOne,
+        query.teamTwo,
+        query.teamThree,
+      ]),
       200
     );
   });
