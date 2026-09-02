@@ -7,6 +7,8 @@ import { BadRequest, handleErrors } from '../../platform/http/errors';
 import {
   AllianceAnalysisSchema,
   AllianceQuerySchema,
+  MatchPredictionQuerySchema,
+  MatchPredictionSchema,
   TeamBreakdownDetailsSchema,
   TeamBreakdownMetricsSchema,
   TeamBreakdownPathSchema,
@@ -163,6 +165,30 @@ const allianceRoute = createRoute({
     },
   },
 });
+const matchPredictionRoute = createRoute({
+  method: 'get',
+  path: '/matchprediction',
+  security: [{ DashboardAuth: [] }],
+  request: { query: MatchPredictionQuerySchema },
+  responses: {
+    200: {
+      description: 'Six-team match win probability and both alliance analyses',
+      content: { 'application/json': { schema: MatchPredictionSchema } },
+    },
+    400: {
+      description: 'Invalid team numbers',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
 
 export function createAnalysisRouter(dependencies: {
   analysis: AnalysisService;
@@ -243,6 +269,17 @@ export function createAnalysisRouter(dependencies: {
         query.teamTwo,
         query.teamThree,
       ]),
+      200
+    );
+  });
+  router.openapi(matchPredictionRoute, async (context) => {
+    const query = context.req.valid('query');
+    return context.json(
+      await dependencies.analysis.matchPrediction(
+        context.get('auth').userId,
+        [query.red1, query.red2, query.red3],
+        [query.blue1, query.blue2, query.blue3]
+      ),
       200
     );
   });

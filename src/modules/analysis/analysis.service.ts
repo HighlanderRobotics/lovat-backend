@@ -325,11 +325,81 @@ function autoPaths(reports: AnalysisReport[]) {
   return groups;
 }
 
+function mean(values: number[]) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function standardDeviation(values: number[]) {
+  const valueMean = mean(values);
+  return Math.sqrt(
+    values.reduce((total, value) => total + (value - valueMean) ** 2, 0) / values.length
+  );
+}
+
+function normalCdf(z: number) {
+  if (z < -6.5) return 0;
+  if (z > 6.5) return 1;
+  let factorial = 1;
+  let sum = 0;
+  let term = 1;
+  let index = 0;
+  while (Math.abs(term) > Math.exp(-23)) {
+    term =
+      (((0.3989422804 * (-1) ** index * z ** index) / (2 * index + 1) / 2 ** index) *
+        z ** (index + 1)) /
+      factorial;
+    sum += term;
+    index += 1;
+    factorial *= index;
+  }
+  return sum + 0.5;
+}
+
 export function createAnalysisService(repository: AnalysisRepository, tbaClient?: TbaClient) {
   async function teamReports(userId: string, teamNumber: number) {
     const account = await repository.findAccount(userId);
     if (!account) throw new NotFound('Account not found');
     return { account, reports: await repository.listTeamReports(teamNumber, account) };
+  }
+  async function allianceAnalysis(userId: string, teamNumbers: [number, number, number]) {
+    const account = await repository.findAccount(userId);
+    if (!account) throw new NotFound('Account not found');
+    const reportsByTeam = await Promise.all(
+      teamNumbers.map((teamNumber) => repository.listTeamReports(teamNumber, account))
+    );
+    const teamMetrics = reportsByTeam.map(metricsForReports);
+    const teamResults = teamNumbers.map((team, index) => {
+      const reports = reportsByTeam[index];
+      const counts = Object.fromEntries(roleOrder.map((role) => [role, 0])) as Record<
+        (typeof roleOrder)[number],
+        number
+      >;
+      for (const report of reports) {
+        for (const role of report.robotRoles) counts[role] += 1;
+      }
+      const mainRole = roleOrder.reduce((best, role) =>
+        counts[role] > counts[best] ? role : best
+      );
+      return {
+        team,
+        role: roleOrder.indexOf(mainRole),
+        averagePoints: teamMetrics[index].totalPoints,
+        paths: autoPaths(reports),
+      };
+    });
+    const climbValues = (metric: 'l1StartTime' | 'l2StartTime' | 'l3StartTime') =>
+      teamMetrics.map((metrics) => (metrics[metric] > 0 ? metrics[metric] : null));
+    const sum = (metric: 'totalPoints' | 'totalFuelOutputted') =>
+      teamMetrics.reduce((total, metrics) => total + metrics[metric], 0);
+    return {
+      totalPoints: sum('totalPoints'),
+      teams: teamResults,
+      l1StartTime: climbValues('l1StartTime'),
+      l2StartTime: climbValues('l2StartTime'),
+      l3StartTime: climbValues('l3StartTime'),
+      totalFuelOutputted: sum('totalFuelOutputted'),
+      totalBallThroughput: sum('totalFuelOutputted'),
+    };
   }
   return {
     async categoryMetrics(userId: string, teamNumber: number) {
@@ -441,43 +511,54 @@ export function createAnalysisService(repository: AnalysisRepository, tbaClient?
       return { array, result, all, difference: result - all, team: teamNumber };
     },
     async alliance(userId: string, teamNumbers: [number, number, number]) {
+      return allianceAnalysis(userId, teamNumbers);
+    },
+    async matchPrediction(
+      userId: string,
+      red: [number, number, number],
+      blue: [number, number, number]
+    ) {
       const account = await repository.findAccount(userId);
       if (!account) throw new NotFound('Account not found');
-      const reportsByTeam = await Promise.all(
-        teamNumbers.map((teamNumber) => repository.listTeamReports(teamNumber, account))
+      const teams = [...red, ...blue];
+      const reports = await Promise.all(
+        teams.map((teamNumber) => repository.listTeamReports(teamNumber, account))
       );
-      const teamMetrics = reportsByTeam.map(metricsForReports);
-      const teamResults = teamNumbers.map((team, index) => {
-        const reports = reportsByTeam[index];
-        const counts = Object.fromEntries(roleOrder.map((role) => [role, 0])) as Record<
-          (typeof roleOrder)[number],
-          number
-        >;
-        for (const report of reports) {
-          for (const role of report.robotRoles) counts[role] += 1;
-        }
-        const mainRole = roleOrder.reduce((best, role) =>
-          counts[role] > counts[best] ? role : best
-        );
-        return {
-          team,
-          role: roleOrder.indexOf(mainRole),
-          averagePoints: teamMetrics[index].totalPoints,
-          paths: autoPaths(reports),
-        };
+      const points = reports.map((teamReports) =>
+        [...Map.groupBy(teamReports, (report) => report.matchKey).values()].map((matchReports) =>
+          matchMetric('totalPoints', matchReports)
+        )
+      );
+      if (points.some((values) => values.length <= 1)) return { error: 'not enough data' as const };
+      const allianceStats = (offset: number) => ({
+        mean: mean(points[offset]) + mean(points[offset + 1]) + mean(points[offset + 2]),
+        deviation: Math.sqrt(
+          standardDeviation(points[offset]) ** 2 +
+            standardDeviation(points[offset + 1]) ** 2 +
+            standardDeviation(points[offset + 2]) ** 2
+        ),
       });
-      const climbValues = (metric: 'l1StartTime' | 'l2StartTime' | 'l3StartTime') =>
-        teamMetrics.map((metrics) => (metrics[metric] > 0 ? metrics[metric] : null));
-      const sum = (metric: 'totalPoints' | 'totalFuelOutputted') =>
-        teamMetrics.reduce((total, metrics) => total + metrics[metric], 0);
+      const redStats = allianceStats(0);
+      const blueStats = allianceStats(3);
+      const differentialDeviation = Math.sqrt(redStats.deviation ** 2 + blueStats.deviation ** 2);
+      const redWinning = 1 - normalCdf((blueStats.mean - redStats.mean) / differentialDeviation);
+      const blueWinning = 1 - redWinning;
+      const [redAlliance, blueAlliance] = await Promise.all([
+        allianceAnalysis(userId, red),
+        allianceAnalysis(userId, blue),
+      ]);
       return {
-        totalPoints: sum('totalPoints'),
-        teams: teamResults,
-        l1StartTime: climbValues('l1StartTime'),
-        l2StartTime: climbValues('l2StartTime'),
-        l3StartTime: climbValues('l3StartTime'),
-        totalFuelOutputted: sum('totalFuelOutputted'),
-        totalBallThroughput: sum('totalFuelOutputted'),
+        red1: red[0],
+        red2: red[1],
+        red3: red[2],
+        blue1: blue[0],
+        blue2: blue[1],
+        blue3: blue[2],
+        redWinning,
+        blueWinning,
+        winningAlliance: redWinning >= blueWinning ? 0 : 1,
+        redAlliance,
+        blueAlliance,
       };
     },
   };

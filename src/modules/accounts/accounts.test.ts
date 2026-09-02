@@ -159,6 +159,9 @@ describe('accounts module', () => {
         async alliance() {
           throw new Error('Not used by this test');
         },
+        async matchPrediction() {
+          throw new Error('Not used by this test');
+        },
       },
       accounts: createAccountsService(repository),
       apiKeys: {

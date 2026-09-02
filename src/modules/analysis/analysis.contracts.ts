@@ -130,3 +130,24 @@ export const AllianceAnalysisSchema = z
     totalBallThroughput: z.number(),
   })
   .openapi('AllianceAnalysis');
+
+export const MatchPredictionQuerySchema = z.object({
+  red1: z.coerce.number().int().positive(),
+  red2: z.coerce.number().int().positive(),
+  red3: z.coerce.number().int().positive(),
+  blue1: z.coerce.number().int().positive(),
+  blue2: z.coerce.number().int().positive(),
+  blue3: z.coerce.number().int().positive(),
+});
+export const MatchPredictionSchema = z
+  .union([
+    z.object({ error: z.literal('not enough data') }),
+    MatchPredictionQuerySchema.extend({
+      redWinning: z.number().min(0).max(1),
+      blueWinning: z.number().min(0).max(1),
+      winningAlliance: z.number().int().min(0).max(1),
+      redAlliance: AllianceAnalysisSchema,
+      blueAlliance: AllianceAnalysisSchema,
+    }),
+  ])
+  .openapi('MatchPrediction');

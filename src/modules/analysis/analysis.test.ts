@@ -309,6 +309,41 @@ describe('team category analysis', () => {
     expect(result.totalBallThroughput).toBe(9);
   });
 
+  it('predicts a match from per-match point distributions and rejects sparse data', async () => {
+    const teamRows = new Map<number, AnalysisReport[]>();
+    for (const team of [1, 2, 3, 4, 5, 6]) {
+      const base = team <= 3 ? 10 : 4;
+      teamRows.set(
+        team,
+        [1, 2].map((match) => {
+          const row = report(
+            `${team}-${match}`,
+            `event_qm${match}_${team}`,
+            'event',
+            '2026-03-01',
+            { accuracy: null }
+          );
+          row.events = [event(row.uuid, 30, 'STOP_SCORING', { points: base + match })];
+          return row;
+        })
+      );
+    }
+    const repository = memoryRepository({ count: 12 });
+    repository.listTeamReports = async (teamNumber) => teamRows.get(teamNumber) ?? [];
+    const service = createAnalysisService(repository);
+
+    const result = await service.matchPrediction('analyst', [1, 2, 3], [4, 5, 6]);
+
+    if ('error' in result) throw new Error(result.error);
+    expect(result.redWinning).toBeGreaterThan(0.5);
+    expect(result.blueWinning).toBeCloseTo(1 - result.redWinning);
+    expect(result.winningAlliance).toBe(0);
+    teamRows.set(6, teamRows.get(6)!.slice(0, 1));
+    expect(await service.matchPrediction('analyst', [1, 2, 3], [4, 5, 6])).toEqual({
+      error: 'not enough data',
+    });
+  });
+
   it('exposes the authenticated OpenAPI route', async () => {
     const authenticator: Authenticator = {
       async authenticate(token) {
@@ -340,6 +375,7 @@ describe('team category analysis', () => {
     expect(document.paths['/flag/team/{teamNumber}']?.get).toBeDefined();
     expect(document.paths['/metric/{metric}/team/{teamNumber}']?.get).toBeDefined();
     expect(document.paths['/alliance']?.get).toBeDefined();
+    expect(document.paths['/matchprediction']?.get).toBeDefined();
     const invalid = await router.request('/breakdown/team/8033/unknown', {
       headers: { authorization: 'Bearer valid' },
     });
