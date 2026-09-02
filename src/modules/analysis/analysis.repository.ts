@@ -9,6 +9,7 @@ import {
   tournaments,
   users,
 } from '../../platform/database/schema';
+import type { ImportedTeamMatch } from '../../integrations/tba/tba-client';
 
 export type AnalysisAccount = Pick<
   typeof users.$inferSelect,
@@ -48,6 +49,8 @@ export interface AnalysisRepository {
   listTeamReports(teamNumber: number, account: AnalysisAccount): Promise<AnalysisReport[]>;
   listAllReports(account: AnalysisAccount): Promise<AnalysisReport[]>;
   lastReportedQualification(tournamentKey: string): Promise<number | null>;
+  listTournamentTeams(tournamentKey: string): Promise<number[]>;
+  upsertImportedMatches(tournamentKey: string, matches: ImportedTeamMatch[]): Promise<void>;
 }
 
 function teamSourceFilter(rule: AnalysisAccount['teamSourceRule']) {
@@ -169,6 +172,29 @@ export function createAnalysisRepository(database: Database): AnalysisRepository
           )
         );
       return row.value;
+    },
+    async listTournamentTeams(tournamentKey) {
+      const rows = await database
+        .selectDistinct({ teamNumber: teamMatchData.teamNumber })
+        .from(teamMatchData)
+        .where(eq(teamMatchData.tournamentKey, tournamentKey))
+        .orderBy(asc(teamMatchData.teamNumber));
+      return rows.map(({ teamNumber }) => teamNumber);
+    },
+    async upsertImportedMatches(tournamentKey, matches) {
+      if (matches.length === 0) return;
+      await database
+        .insert(teamMatchData)
+        .values(matches)
+        .onConflictDoUpdate({
+          target: teamMatchData.key,
+          set: {
+            tournamentKey,
+            matchNumber: sql`excluded."matchNumber"`,
+            teamNumber: sql`excluded."teamNumber"`,
+            matchType: sql`excluded."matchType"`,
+          },
+        });
     },
   };
 }

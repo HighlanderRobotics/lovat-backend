@@ -45,7 +45,7 @@ tests are present.
 
 ## Remaining analysis work
 
-- [ ] Core team and multi-team metric analysis
+- [x] Core team and multi-team metric analysis
 - [x] Team category metrics with source-rule filtering, per-match scout averaging, and tournament
       recency weighting
 - [x] Team discrete breakdown summaries and report-level details with source filtering and scouter
@@ -56,7 +56,7 @@ tests are present.
 - [x] Three-team alliance metrics, roles, climb timing, fuel totals, and autonomous paths
 - [x] Match and alliance predictions
 - [x] Qualification ranking predictions
-- [ ] Picklist analysis and z-score ranking
+- [x] Picklist analysis and z-score ranking
 - [ ] Scouting-lead progress and report quality views
 - [ ] CSV team and scout-report exports
 - [ ] Pit display

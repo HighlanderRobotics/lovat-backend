@@ -1,4 +1,4 @@
-import { NotFound } from '../../platform/http/errors';
+import { BadRequest, NotFound } from '../../platform/http/errors';
 import type { AnalysisReport, AnalysisRepository } from './analysis.repository';
 import type { TbaClient } from '../../integrations/tba/tba-client';
 
@@ -33,6 +33,38 @@ export const metricDetailNames = [
   'totalBallThroughput',
   'totalBallThroughPut',
 ] as const;
+export const picklistWeightNames = [
+  'totalPoints',
+  'autoPoints',
+  'teleopPoints',
+  'driverAbility',
+  'climbResult',
+  'autoClimb',
+  'defenseEffectiveness',
+  'contactDefenseTime',
+  'campingDefenseTime',
+  'totalDefensiveTime',
+  'totalFuelThroughput',
+  'totalFuelFed',
+  'feedingRate',
+  'scoringRate',
+  'estimatedSuccessfulFuelRate',
+  'estimatedTotalFuelScored',
+] as const;
+export type PicklistWeightName = (typeof picklistWeightNames)[number];
+const picklistMetricMap: Partial<Record<PicklistWeightName, CategoryMetric>> = {
+  totalPoints: 'totalPoints',
+  autoPoints: 'autoPoints',
+  teleopPoints: 'teleopPoints',
+  autoClimb: 'autoClimbStartTime',
+  defenseEffectiveness: 'defenseEffectiveness',
+  contactDefenseTime: 'contactDefenseTime',
+  campingDefenseTime: 'campingDefenseTime',
+  totalDefensiveTime: 'totalDefenseTime',
+  totalFuelThroughput: 'totalFuelOutputted',
+  feedingRate: 'feedingRate',
+  scoringRate: 'fuelPerSecond',
+};
 
 export const breakdownNames = [
   'robotRole',
@@ -670,6 +702,84 @@ export function createAnalysisService(repository: AnalysisRepository, tbaClient?
           right.highScore - left.highScore
       );
       return { tournamentKey, rankings: result };
+    },
+    async picklist(
+      userId: string,
+      input: {
+        tournamentKey?: string;
+        flags: string[];
+        weights: Record<PicklistWeightName, number>;
+      }
+    ) {
+      if (!input.tournamentKey) return { teams: [] };
+      if (Object.values(input.weights).every((weight) => weight === 0))
+        throw new BadRequest('All weights are zero');
+      const account = await repository.findAccount(userId);
+      if (!account) throw new NotFound('Account not found');
+      let teams = await repository.listTournamentTeams(input.tournamentKey);
+      if (teams.length === 0 && tbaClient) {
+        try {
+          const refresh = await tbaClient.getEventMatches(input.tournamentKey, null);
+          if (!refresh.notModified) {
+            await repository.upsertImportedMatches(input.tournamentKey, refresh.matches);
+            teams = await repository.listTournamentTeams(input.tournamentKey);
+          }
+        } catch {
+          // The legacy endpoint reports the bad event below after its import attempt fails.
+        }
+      }
+      if (teams.length === 0) throw new BadRequest('Bad event, not enough teams');
+      const reportsByTeam = await Promise.all(
+        teams.map((teamNumber) => repository.listTeamReports(teamNumber, account))
+      );
+      const metricsByTeam = reportsByTeam.map(metricsForReports);
+      const results = teams.map((team) => ({
+        team,
+        result: 0,
+        breakdown: [] as { type: string; result: number }[],
+        unweighted: [] as { type: string; result: number }[],
+        flags: [] as { type: string; result: number }[],
+      }));
+      const metricFlags = input.flags.filter((flag): flag is CategoryMetric =>
+        metricNames.includes(flag as CategoryMetric)
+      );
+      results.forEach((result, index) => {
+        for (const flag of metricFlags) {
+          result.flags.push({ type: flag, result: metricsByTeam[index][flag] });
+        }
+      });
+      for (const weightName of picklistWeightNames) {
+        const weight = input.weights[weightName];
+        const metric = picklistMetricMap[weightName];
+        if (!weight || !metric) continue;
+        const values = metricsByTeam.map((metrics) => metrics[metric]);
+        const valueMean = mean(values);
+        const deviation = standardDeviation(values) || 0.1;
+        results.forEach((result, index) => {
+          const zScore = values[index] === 0 ? 0 : (values[index] - valueMean) / deviation;
+          result.breakdown.push({ type: weightName, result: zScore * weight });
+          result.unweighted.push({ type: weightName, result: zScore });
+        });
+      }
+      if (input.flags.includes('rank')) {
+        const ranks = await Promise.all(
+          teams.map(async (team) => {
+            if (!tbaClient) return 0;
+            try {
+              return (await tbaClient.getTeamEventStatus(input.tournamentKey!, team)).rank ?? 0;
+            } catch {
+              return 0;
+            }
+          })
+        );
+        results.forEach((result, index) =>
+          result.flags.push({ type: 'rank', result: ranks[index] })
+        );
+      }
+      for (const result of results) {
+        result.result = result.breakdown.reduce((total, value) => total + value.result, 0);
+      }
+      return { teams: results.sort((left, right) => right.result - left.result) };
     },
   };
 }

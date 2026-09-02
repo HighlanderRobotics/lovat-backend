@@ -160,6 +160,9 @@ describe('api keys module', () => {
         async qualificationRankingPrediction() {
           throw new Error('Not used by this test');
         },
+        async picklist() {
+          throw new Error('Not used by this test');
+        },
       },
       apiKeys,
       accounts: {

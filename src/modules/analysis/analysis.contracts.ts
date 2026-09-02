@@ -177,3 +177,40 @@ export const QualificationRankingPredictionSchema = z
     }),
   ])
   .openapi('QualificationRankingPrediction');
+
+const OptionalWeightSchema = z.coerce.number().finite().optional();
+export const PicklistAnalysisQuerySchema = z.object({
+  tournamentKey: z.string().trim().min(1).optional(),
+  flags: z.string().optional(),
+  stage: z.string().optional(),
+  totalPoints: OptionalWeightSchema,
+  autoPoints: OptionalWeightSchema,
+  teleopPoints: OptionalWeightSchema,
+  driverAbility: OptionalWeightSchema,
+  climbResult: OptionalWeightSchema,
+  autoClimb: OptionalWeightSchema,
+  defenseEffectiveness: OptionalWeightSchema,
+  contactDefenseTime: OptionalWeightSchema,
+  campingDefenseTime: OptionalWeightSchema,
+  totalDefensiveTime: OptionalWeightSchema,
+  totalFuelThroughput: OptionalWeightSchema,
+  totalFuelFed: OptionalWeightSchema,
+  feedingRate: OptionalWeightSchema,
+  scoringRate: OptionalWeightSchema,
+  estimatedSuccessfulFuelRate: OptionalWeightSchema,
+  estimatedTotalFuelScored: OptionalWeightSchema,
+});
+const PicklistValueSchema = z.object({ type: z.string(), result: z.number() });
+export const PicklistAnalysisSchema = z
+  .object({
+    teams: z.array(
+      z.object({
+        team: z.number().int().positive(),
+        result: z.number(),
+        breakdown: z.array(PicklistValueSchema),
+        unweighted: z.array(PicklistValueSchema),
+        flags: z.array(PicklistValueSchema),
+      })
+    ),
+  })
+  .openapi('PicklistAnalysis');

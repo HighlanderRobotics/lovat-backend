@@ -138,6 +138,9 @@ describe('scouters module', () => {
         async qualificationRankingPrediction() {
           throw new Error('Not used by this test');
         },
+        async picklist() {
+          throw new Error('Not used by this test');
+        },
       },
       scouters: createScoutersService(memory.repository),
       accounts: {

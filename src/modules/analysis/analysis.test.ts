@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import type { Authenticator } from '../../platform/auth/types';
 import type { AnalysisAccount, AnalysisReport, AnalysisRepository } from './analysis.repository';
 import { createAnalysisRouter } from './analysis.routes';
-import { createAnalysisService } from './analysis.service';
+import { createAnalysisService, picklistWeightNames } from './analysis.service';
 
 const account: AnalysisAccount = {
   id: 'analyst',
@@ -69,6 +69,7 @@ function memoryRepository(input: {
   reports?: AnalysisReport[];
   account?: AnalysisAccount | null;
   lastReported?: number | null;
+  tournamentTeams?: number[];
 }): AnalysisRepository {
   return {
     async findAccount() {
@@ -89,6 +90,10 @@ function memoryRepository(input: {
     async lastReportedQualification() {
       return input.lastReported === undefined ? 1 : input.lastReported;
     },
+    async listTournamentTeams() {
+      return input.tournamentTeams ?? [];
+    },
+    async upsertImportedMatches() {},
   };
 }
 
@@ -395,6 +400,54 @@ describe('team category analysis', () => {
     expect(result.rankings[3]).toMatchObject({ losses: 1, rankingPoints: 1 });
   });
 
+  it('ranks tournament teams with weighted z-scores and raw flags', async () => {
+    const teamRows = new Map<number, AnalysisReport[]>();
+    for (const [team, points] of [
+      [1, 10],
+      [2, 20],
+    ] as const) {
+      const row = report(`${team}`, `event_qm1_${team}`, 'event', '2026-03-01', {
+        accuracy: null,
+        driverAbility: team + 2,
+      });
+      row.events = [event(row.uuid, 30, 'STOP_SCORING', { points })];
+      teamRows.set(team, [row]);
+    }
+    const repository = memoryRepository({ tournamentTeams: [1, 2] });
+    repository.listTeamReports = async (teamNumber) => teamRows.get(teamNumber) ?? [];
+    const service = createAnalysisService(repository, {
+      async getTeamEventStatus(_eventKey, teamNumber) {
+        return { rank: teamNumber, matchesPlayed: 1, rankingPoints: 1 };
+      },
+      async getEventMatches() {
+        throw new Error('Not used by this test');
+      },
+      async getEventPredictionData() {
+        throw new Error('Not used by this test');
+      },
+    });
+    const weights = Object.fromEntries(
+      picklistWeightNames.map((name) => [name, name === 'totalPoints' ? 2 : 0])
+    ) as Record<(typeof picklistWeightNames)[number], number>;
+
+    const result = await service.picklist('analyst', {
+      tournamentKey: 'event',
+      flags: ['driverAbility', 'rank'],
+      weights,
+    });
+
+    expect(result.teams.map(({ team, result: score }) => ({ team, score }))).toEqual([
+      { team: 2, score: 2 },
+      { team: 1, score: -2 },
+    ]);
+    expect(result.teams[0].breakdown).toEqual([{ type: 'totalPoints', result: 2 }]);
+    expect(result.teams[0].unweighted).toEqual([{ type: 'totalPoints', result: 1 }]);
+    expect(result.teams[0].flags).toEqual([
+      { type: 'driverAbility', result: 4 },
+      { type: 'rank', result: 2 },
+    ]);
+  });
+
   it('exposes the authenticated OpenAPI route', async () => {
     const authenticator: Authenticator = {
       async authenticate(token) {
@@ -428,6 +481,7 @@ describe('team category analysis', () => {
     expect(document.paths['/alliance']?.get).toBeDefined();
     expect(document.paths['/matchprediction']?.get).toBeDefined();
     expect(document.paths['/qualrankingprediction']?.get).toBeDefined();
+    expect(document.paths['/picklist']?.get).toBeDefined();
     const invalid = await router.request('/breakdown/team/8033/unknown', {
       headers: { authorization: 'Bearer valid' },
     });

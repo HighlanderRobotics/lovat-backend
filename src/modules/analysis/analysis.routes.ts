@@ -11,6 +11,8 @@ import {
   MatchPredictionSchema,
   QualificationRankingPredictionSchema,
   QualificationRankingQuerySchema,
+  PicklistAnalysisQuerySchema,
+  PicklistAnalysisSchema,
   TeamBreakdownDetailsSchema,
   TeamBreakdownMetricsSchema,
   TeamBreakdownPathSchema,
@@ -22,6 +24,7 @@ import {
   TeamMetricPathSchema,
 } from './analysis.contracts';
 import type { AnalysisService } from './analysis.service';
+import { picklistWeightNames } from './analysis.service';
 
 const categoryRoute = createRoute({
   method: 'get',
@@ -215,6 +218,30 @@ const qualificationRankingRoute = createRoute({
     },
   },
 });
+const picklistRoute = createRoute({
+  method: 'get',
+  path: '/picklist',
+  security: [{ DashboardAuth: [] }],
+  request: { query: PicklistAnalysisQuerySchema },
+  responses: {
+    200: {
+      description: 'Tournament teams ranked by weighted metric z-scores',
+      content: { 'application/json': { schema: PicklistAnalysisSchema } },
+    },
+    400: {
+      description: 'All weights are zero or the event has no teams',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Authentication required',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Account not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
 
 export function createAnalysisRouter(dependencies: {
   analysis: AnalysisService;
@@ -318,5 +345,26 @@ export function createAnalysisRouter(dependencies: {
       200
     )
   );
+  router.openapi(picklistRoute, async (context) => {
+    const query = context.req.valid('query');
+    let flags: string[] = [];
+    try {
+      const parsed: unknown = JSON.parse(query.flags ?? '[]');
+      if (Array.isArray(parsed) && parsed.every((flag) => typeof flag === 'string')) flags = parsed;
+    } catch {
+      // Legacy behavior treats malformed flag JSON as an empty list.
+    }
+    const weights = Object.fromEntries(
+      picklistWeightNames.map((name) => [name, query[name] ?? 0])
+    ) as Record<(typeof picklistWeightNames)[number], number>;
+    return context.json(
+      await dependencies.analysis.picklist(context.get('auth').userId, {
+        tournamentKey: query.tournamentKey,
+        flags,
+        weights,
+      }),
+      200
+    );
+  });
   return router;
 }
